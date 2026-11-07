@@ -747,7 +747,7 @@ input[type='range'] { width: 100%; accent-color: var(--plate-blue); min-height: 
 /* ---------- About ---------- */
 
 /* ---------- footer ---------- */
-.site-footer { border-top: 1px solid var(--rule); padding-block: 1.75rem 2.5rem; font-size: 0.85rem; color: var(--ink-2); }
+.site-footer { padding-block: 0.5rem 2.5rem; font-size: 0.85rem; color: var(--ink-2); }
 .footer-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 2rem; }
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 2fr; gap: var(--col-gap); }
 .site-footer ul { list-style: none; display: grid; gap: 0.25rem; margin-top: 0.4rem; }
@@ -933,10 +933,16 @@ a { color: inherit; }
 .is-pad .nb-slot-l { display: none; }
 
 .nb-page { position: absolute; inset: 0; overflow: hidden; color: var(--nb-ink); background: var(--nb-paper) var(--grain); }
-.nb-page::before { /* faint ruling and a margin line, like a notebook */
-  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
-  background: repeating-linear-gradient(180deg, transparent 0 31px, rgba(24, 24, 26, 0.06) 31px 32px);
+.nb-page::before { /* faint ruling, like a notebook */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(180deg, transparent 0 31px, rgba(24, 24, 26, 0.035) 31px 32px);
 }
+/* lightly crumpled paper: one sheet of texture runs across the spread */
+.nb-page, .nb-sface { background-image: var(--grain), url('assets/textures/paper-crumple.jpg'); background-size: auto, 200% 100%; background-blend-mode: normal, multiply; }
+.nb-left-part, .nb-sface.nb-face-back { background-position: 0 0, 0 0; }
+.nb-right-part, .nb-sface.nb-face-front { background-position: 0 0, 100% 0; }
+.is-pad .nb-page { background-size: auto, 100% 100%; background-position: 0 0, 0 0; }
+.nb-sface * { backdrop-filter: none !important; }
 .nb-slot-l .nb-page, .nb-face-back .nb-page { border-radius: 3px 0 0 3px; box-shadow: inset -34px 0 34px -30px rgba(0, 0, 0, 0.38), inset 1px 0 0 rgba(0, 0, 0, 0.06); }
 .nb-slot-r .nb-page, .nb-face-front .nb-page { border-radius: 0 3px 3px 0; box-shadow: inset 34px 0 34px -30px rgba(0, 0, 0, 0.32); }
 .is-pad .nb-page { border-radius: 3px; box-shadow: inset 18px 0 22px -20px rgba(0, 0, 0, 0.35); }
@@ -985,18 +991,26 @@ a { color: inherit; }
 .nb-page .xp-note { justify-self: end; margin: 0 6% 0 0; max-width: 18ch; color: var(--nb-pencil); font-size: clamp(1.2rem, 1rem + 0.6vw, 1.6rem); line-height: 1; transform: rotate(-3deg); }
 .nb-page .xp-obs, .nb-page .xp-openq { display: none; }
 
-/* the turning leaf: flat paper folded from a corner (js/notebook.js). Only transform and
-   clip-path change while it turns, so the browser just recomposites two page layers. */
-.nb-leaf { position: absolute; top: 0; height: 100%; z-index: 5; pointer-events: none; }
-.nb-leaf[hidden] { display: none; }
+/* the turning leaf (js/notebook.js): a sheet hinged at the spine, cut into strips chained in 3D so
+   it bends like paper. Only transforms and gradients change while it turns. */
+.nb-leaf { position: absolute; top: 0; height: 100%; z-index: 5; pointer-events: none; transform-style: preserve-3d; }
+.nb-leaf[hidden], .nb-cast[hidden] { display: none; }
 .nb-leaf.is-spine { left: var(--page-w); width: var(--page-w); }
 .nb-leaf.is-side { left: 0; width: 100%; }
-.nb-face { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background: var(--nb-paper) var(--grain); will-change: clip-path; }
-.nb-face-back { transform-origin: 0 0; will-change: transform, clip-path; }
-.nb-face.is-empty, .is-side .nb-face-back { background: var(--nb-paper-2) var(--grain); }
-.nb-face .nb-page::after, .is-turning .nb-page::after { display: none; } /* no dog-ears while a sheet is lifted */
-.nb-fold-under, .nb-fold-light { position: absolute; inset: 0; pointer-events: none; }
-.nb-fold-light { z-index: 2; }
+.nb-strip { position: absolute; left: 0; top: 0; height: 100%; transform-origin: 0 50%; transform-style: preserve-3d; will-change: transform; }
+.nb-sface { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; background-color: var(--nb-paper); transform: translateZ(0); transform-style: flat; isolation: isolate; }
+.nb-sback { transform: rotateY(180deg); }
+.is-side .nb-strip { width: 100%; transform-origin: 50% 0; }
+.is-side .nb-sback { transform: rotateX(180deg); }
+.is-side .nb-scontent { left: 0; width: 100%; }
+.nb-sface.is-empty { background: var(--nb-paper-2) var(--grain); }
+.nb-scontent { position: absolute; top: 0; height: 100%; }
+.nb-shade { position: absolute; inset: 0; pointer-events: none; }
+.nb-sface .nb-page::after, .is-turning .nb-page::after { display: none; } /* no dog-ears while a sheet is lifted */
+.nb-cast { position: absolute; top: 0; height: 100%; width: var(--page-w); z-index: 4; pointer-events: none; }
+.nb-cast-r { left: var(--page-w); }
+.nb-cast-l { left: 0; }
+.is-pad .nb-cast-r { left: 0; width: 100%; }
 
 /* footer: page counter left, turning controls right */
 .nb-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem 1.2rem; margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }

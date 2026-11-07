@@ -6,18 +6,17 @@
 // content in the document; switching to the reading view puts every node back.
 //
 // One landscape spread per experiment: words on the left page, the taped figure on the right.
-// The page turn is this file's own leaf engine: a corner fold (flat paper folded along the
-// perpendicular bisector of the corner and where it is pulled to, the technique behind
-// turn.js and StPageFlip), drawn with one transform and clip-paths on the real page nodes:
-//   wide stage (>= SPREAD_MIN)  two-page spreads; the right leaf peels from its corner over the spine
-//   narrow stage                a landscape notepad; the sheet folds away over its left edge
+// The page turn is this file's own leaf engine: the sheet stays hinged at its binding and bends
+// as it turns, drawn as a chain of thin 3D strips that carry inert copies of the two pages:
+//   wide stage (>= SPREAD_MIN)  two-page spreads; the right leaf turns over the spine, bending as it goes
+//   narrow stage                a notepad bound at the top; the sheet flips up over the binding
 //   reduced motion              pages change instantly, every control stays
 // A short page-flip sound (Kenney, CC0) plays on each turn; the speaker button mutes it.
-// The leaf can be dragged: from a page corner with a mouse, or with a horizontal swipe on
-// touch. Vertical scrolling and text selection keep working (touch-action: pan-y, and mouse
-// drags only start in the corners). Pages that are not visible are inert.
+// The leaf can be dragged: from a page's outer edge with a mouse (the bottom of the notepad),
+// or with a horizontal swipe on touch. Vertical scrolling and text selection keep working
+// (touch-action: pan-y, and mouse drags only start near the edges). Pages that are not visible are inert.
 
-const TURN_MS = 900; // length of a turn started by a button, key or tab
+const TURN_MS = 1350; // length of a turn started by a button, key or tab
 const SPREAD_MIN = 820; // stage width (px) from which two-page spreads are shown
 const EDGE = 0.34; // a mouse drag can start in the outer third of either page
 
@@ -139,6 +138,7 @@ export function initNotebook(section) {
     spread = w >= SPREAD_MIN;
     const pageW = Math.min(spread ? Math.floor(w / 2) : w, spread ? 680 : 720);
     bookEl.style.setProperty('--page-w', `${pageW}px`);
+    bookEl.style.perspective = `${pageW * 7}px`; // in px: Safari ignores calc() here
     bookEl.classList.toggle('is-spread', spread);
     bookEl.classList.toggle('is-pad', !spread);
     let h = Math.round(pageW * (spread ? 0.8 : 0.72)); // landscape
@@ -154,16 +154,11 @@ export function initNotebook(section) {
 
   /* ---------- rendering ---------- */
   const leaf = el('div', 'nb-leaf');
-  const faceA = el('div', 'nb-face nb-face-front');
-  const faceB = el('div', 'nb-face nb-face-back');
-  leaf.append(faceA, faceB);
   leaf.setAttribute('aria-hidden', 'true');
   const slotL = el('div', 'nb-slot nb-slot-l');
   const slotR = el('div', 'nb-slot nb-slot-r');
-  const under = el('div', 'nb-fold-under'); // the shadow in the crease, on the page being uncovered
-  const shadeA = el('div', 'nb-fold-light');
-  const shadeB = el('div', 'nb-fold-light');
-  leaf.prepend(under);
+  const castL = el('div', 'nb-cast nb-cast-l'); // shadow the lifted sheet throws on the page beneath
+  const castR = el('div', 'nb-cast nb-cast-r');
 
   function place(v) {
     pages.forEach((p) => { p.hidden = true; });
@@ -236,142 +231,159 @@ export function initNotebook(section) {
 
   /* ---------- the turn ----------
      The turning sheet is always the right-hand leaf: its front is a right page, its back the
-     left page of the next spread. A backward turn is the same leaf being laid back down.
-     The sheet is flat paper folded along one line, the way a real page peels from a corner:
-     the corner C is pulled to a point P, the fold is the perpendicular bisector of C and P,
-     the front is clipped to the spine side of the fold and the back is the cut-off flap
-     reflected across it. Two real page nodes, one transform and two clip-paths per frame:
-     no clones, no strips, no seams. Coordinates: origin at the top of the spine, x toward the
-     outer edge, y down; the leaf element sits exactly there. */
+     left page of the next spread. A backward turn is the same leaf laid back down.
+     The sheet is hinged at the spine and bends like paper: it is cut into narrow vertical strips
+     that are chained edge to edge in 3D (the book has perspective), so it can never come away
+     from the spine. Each strip carries a slice of the front and back page (inert copies, the real
+     pages stay where they are) and its own shading, so the curl reads as light, not as facets.
+     Progress p runs from 0 (flat on the right) to 1 (flat on the left). Early in a turn the free
+     edge leads and the spine side follows; late in a turn the spine side lands first and the free
+     edge floats down after it. Coordinates: origin at the top of the spine (or the pad's left
+     edge), x toward the outer edge, z toward the viewer. */
+  const STRIPS = 22;
+  const PAD_END = 0.52; // how far a notepad sheet turns before it has gone over the top
+  const LEAD = 0.15; // how far the free edge leads (then trails) the spine side, as a share of a turn
+  const PI = Math.PI;
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+  function inertCopy(n, w) {
+    const c = pages[n].cloneNode(true);
+    c.hidden = false;
+    c.removeAttribute('aria-hidden');
+    c.style.cssText = '';
+    c.querySelectorAll('a, button, [tabindex]').forEach((x) => x.setAttribute('tabindex', '-1'));
+    return c;
+  }
+
   function prepareTurn(from, to) {
     const fv = spreadOf(from), tv = spreadOf(to);
     const fwd = tv[0] > fv[0];
     pages.forEach((p) => { p.hidden = true; });
     slotL.textContent = '';
     slotR.textContent = '';
-    faceA.textContent = '';
-    faceB.textContent = '';
     const show = (n, into) => { if (n == null) return; pages[n].hidden = false; into.append(pages[n]); };
+    let front = null, back = null;
     if (spread) {
-      if (fwd) {
-        show(leftOf(fv), slotL); show(rightOf(tv), slotR);
-        show(rightOf(fv), faceA); show(leftOf(tv), faceB);
-      } else {
-        show(leftOf(tv), slotL); show(rightOf(fv), slotR);
-        show(rightOf(tv), faceA); show(leftOf(fv), faceB);
-      }
+      if (fwd) { show(leftOf(fv), slotL); show(rightOf(tv), slotR); front = rightOf(fv); back = leftOf(tv); }
+      else { show(leftOf(tv), slotL); show(rightOf(fv), slotR); front = rightOf(tv); back = leftOf(fv); }
     } else {
-      // pad: the current sheet folds away over its left edge (forward), or the previous one comes back
+      // pad: the current sheet lifts away over its left edge (forward), or the previous one comes back
       show(fwd ? tv[0] : fv[0], slotR);
-      show(fwd ? fv[0] : tv[0], faceA);
+      front = fwd ? fv[0] : tv[0];
     }
-    faceA.classList.toggle('is-empty', !faceA.firstChild);
-    faceB.classList.toggle('is-empty', !faceB.firstChild);
-    faceA.append(shadeA);
-    faceB.append(shadeB);
     leaf.className = `nb-leaf ${spread ? 'is-spine' : 'is-side'}`;
-    bookEl.append(leaf);
+    leaf.textContent = '';
+    leaf.style.opacity = '';
+    bookEl.append(castL, castR, leaf);
     leaf.hidden = false;
+    castL.hidden = !spread;
+    castR.hidden = false;
     const w = leaf.offsetWidth, h = leaf.offsetHeight;
-    const t = { fwd, tv, spread, w, h, top: false, P: null };
-    setP(t, fwd ? w : -w, h); // flat where it starts
+    // spreads bend across the width (vertical strips); the notepad flips over its top edge (horizontal strips)
+    const len = spread ? w : h;
+    const sw = len / STRIPS;
+    const frontCopy = front != null ? inertCopy(front, w) : null;
+    const backCopy = back != null ? inertCopy(back, w) : null;
+    const strips = [];
+    for (let i = 0; i < STRIPS; i++) {
+      const wid = i === STRIPS - 1 ? sw : sw + 1.5; // a hair of overlap: no cracks at the joints
+      const st = el('div', 'nb-strip');
+      if (spread) st.style.width = `${wid}px`; else st.style.height = `${wid}px`;
+      const mk = (copy, cls, offset) => {
+        const face = el('div', `nb-sface ${cls}`);
+        if (copy) {
+          const c = el('div', 'nb-scontent');
+          if (spread) { c.style.left = `${offset}px`; c.style.width = `${w}px`; }
+          else { c.style.top = `${offset}px`; c.style.height = `${h}px`; }
+          c.append(i === 0 ? copy : copy.cloneNode(true));
+          face.append(c);
+        } else face.classList.add('is-empty');
+        const shade = el('div', 'nb-shade');
+        face.append(shade);
+        st.append(face);
+        return [face, shade];
+      };
+      const [fFace, fShade] = mk(frontCopy, 'nb-face-front', -i * sw);
+      const [bFace, bShade] = mk(spread ? backCopy : null, 'nb-face-back nb-sback', -(w - i * sw - wid));
+      leaf.append(st);
+      strips.push({ st, fFace, bFace, fShade, bShade, up: null });
+    }
+    const end = spread ? 1 : PAD_END; // a notepad sheet is gone once it is over the binding
+    const t = { fwd, tv, spread, w, h, len, sw, strips, end, p: fwd ? 0 : end };
+    setP(t, t.p);
     return t;
   }
 
-  // where the corner is when the sheet is flat (a = 0) or turned over (a = 1)
-  const rest = (t, a) => [a ? -t.w : t.w, t.top ? 0 : t.h];
-  // the corner's path for a turn: it sweeps over the spine and lifts a little on the way
-  function arc(t, a) {
-    const lift = t.h * 0.2 * Math.sin(Math.PI * a);
-    return [t.w * Math.cos(Math.PI * a), t.top ? lift : t.h - lift];
+  // angle of the sheet at the spine and at the free edge, for progress p
+  function edgeAngles(p) {
+    const s = LEAD * Math.sin(2 * PI * p);
+    return [PI * (p - s), PI * (p + s)];
   }
-  // how far over a corner position is: 0 flat, 1 turned
-  const aOf = (t, x) => Math.acos(Math.max(-1, Math.min(1, x / t.w))) / Math.PI;
+  // brightness of a face turned by phi: full when it faces the reader, darker as it tilts away
+  const shadeOf = (phi) => {
+    const c = Math.abs(Math.cos(phi));
+    return 0.42 * (1 - c) * (1 - c * 0.35);
+  };
 
-  // Paper does not stretch: the corner stays within a page width of the spine end on its own
-  // edge, and within a diagonal of the other end.
-  function constrain(t, x, y) {
-    const { w, h } = t;
-    const ay = t.top ? 0 : h, by = t.top ? h : 0, diag = Math.hypot(w, h);
-    let d = Math.hypot(x, y - ay);
-    if (d > w) { x *= w / d; y = ay + (y - ay) * (w / d); }
-    d = Math.hypot(x, y - by);
-    if (d > diag) { x *= diag / d; y = by + (y - by) * (diag / d); }
-    return [x, y];
-  }
-
-  // the part of polygon `pts` on the side s·((q − m)·n) ≤ 0
-  function clipHalf(pts, nx, ny, mx, my, s) {
-    const out = [];
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], q = pts[(i + 1) % pts.length];
-      const fp = s * ((p[0] - mx) * nx + (p[1] - my) * ny);
-      const fq = s * ((q[0] - mx) * nx + (q[1] - my) * ny);
-      if (fp <= 0) out.push(p);
-      if ((fp < 0 && fq > 0) || (fp > 0 && fq < 0)) {
-        const k = fp / (fp - fq);
-        out.push([p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k]);
+  function setP(t, p) {
+    t.p = p = clamp01(p);
+    const { len, sw, strips } = t;
+    const w = len;
+    const [as, at] = edgeAngles(p);
+    const phis = strips.map((_, i) => {
+      const u = (i + 0.5) / STRIPS;
+      return Math.max(0, Math.min(PI, as + (at - as) * u ** 1.6));
+    });
+    let x = 0, z = 0, minX = 0, maxX = 0;
+    const flat = p <= 0.0005 || p >= 0.9995;
+    strips.forEach((s, i) => {
+      const phi = phis[i];
+      s.st.style.transform = t.spread
+        ? `translate3d(${x.toFixed(2)}px,0,${z.toFixed(2)}px) rotateY(${(-phi).toFixed(4)}rad)`
+        : `translate3d(0,${x.toFixed(2)}px,${z.toFixed(2)}px) rotateX(${phi.toFixed(4)}rad)`;
+      // which side of the strip faces the reader (chosen here, not by backface-visibility,
+      // which Safari gets wrong inside nested 3D)
+      const up = phi <= PI / 2;
+      if (up !== s.up) {
+        s.up = up;
+        s.fFace.style.visibility = up ? '' : 'hidden';
+        s.bFace.style.visibility = up ? 'hidden' : '';
       }
-    }
-    return out;
-  }
-  const polygon = (pts, flipW) => (pts.length < 3 ? 'polygon(0 0, 0 0, 0 0)'
-    : `polygon(${pts.map(([x, y]) => `${(flipW ? flipW - x : x).toFixed(1)}px ${y.toFixed(1)}px`).join(',')})`);
-  // a linear gradient along unit direction (dx, dy) in a w×h box, stops in px from point (rx, ry)
-  function gradient(dx, dy, rx, ry, w, h, stops) {
-    const L = Math.abs(w * dx) + Math.abs(h * dy);
-    const o = (rx - (w / 2 - (dx * L) / 2)) * dx + (ry - (h / 2 - (dy * L) / 2)) * dy;
-    return `linear-gradient(${Math.atan2(dx, -dy).toFixed(4)}rad, ${stops.map(([px, c]) => `${c} ${(o + px).toFixed(1)}px`).join(', ')})`;
-  }
+      // shade across the strip, from the joint on its spine side to the joint on its outer side
+      const a0 = i ? (phis[i - 1] + phi) / 2 : phi;
+      const a1 = i < STRIPS - 1 ? (phis[i + 1] + phi) / 2 : phi;
+      const d0 = flat ? 0 : shadeOf(a0), d1 = flat ? 0 : shadeOf(a1);
+      const dir = t.spread ? '90deg' : '180deg';
+      s.fShade.style.background = `linear-gradient(${dir}, rgba(20,18,14,${d0.toFixed(3)}), rgba(20,18,14,${d1.toFixed(3)}))`;
+      s.bShade.style.background = `linear-gradient(${dir}, rgba(20,18,14,${d1.toFixed(3)}), rgba(20,18,14,${d0.toFixed(3)}))`;
+      x += sw * Math.cos(phi);
+      z += sw * Math.sin(phi);
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+    });
 
-  function setP(t, px, py) {
-    const { w, h } = t;
-    const [x, y] = constrain(t, px, py);
-    t.P = [x, y];
-    const cy = t.top ? 0 : h;
-    const dx = w - x, dy = cy - y, len = Math.hypot(dx, dy);
-    if (len < 0.5) { // flat: nothing folded
-      faceA.style.clipPath = 'none';
-      faceB.style.visibility = 'hidden';
-      under.style.visibility = 'hidden';
-      return;
+    // the shadow the raised sheet casts on the page it is uncovering (right) or about to cover (left)
+    const lift = flat ? 0 : Math.sqrt(Math.sin(PI * p));
+    const gapR = w - maxX, gapL = minX + w;
+    const fade = t.spread ? 1 : clamp01((PAD_END - p) / 0.14);
+    const aR = 0.34 * lift * fade * clamp01(gapR / 50), aL = 0.34 * lift * clamp01(gapL / 50);
+    const spreadR = 24 + gapR * 0.35, spreadL = 24 + gapL * 0.35;
+    if (t.spread) {
+      castR.style.background = `linear-gradient(90deg, transparent ${maxX.toFixed(1)}px, rgba(0,0,0,${aR.toFixed(3)}) ${maxX.toFixed(1)}px, rgba(0,0,0,0) ${(maxX + spreadR).toFixed(1)}px)`;
+      castL.style.background = `linear-gradient(270deg, transparent ${(-minX).toFixed(1)}px, rgba(0,0,0,${aL.toFixed(3)}) ${(-minX).toFixed(1)}px, rgba(0,0,0,0) ${(-minX + spreadL).toFixed(1)}px)`;
+    } else {
+      castR.style.background = `linear-gradient(180deg, transparent ${maxX.toFixed(1)}px, rgba(0,0,0,${aR.toFixed(3)}) ${maxX.toFixed(1)}px, rgba(0,0,0,0) ${(maxX + spreadR).toFixed(1)}px)`;
+      // the notepad sheet fades as it goes over the top of the pad, where the next sheet would hide it
+      leaf.style.opacity = String(fade);
     }
-    faceB.style.visibility = '';
-    under.style.visibility = '';
-    const nx = dx / len, ny = dy / len; // fold normal, pointing at the corner
-    const mx = (w + x) / 2, my = (cy + y) / 2; // a point on the fold
-    const rect = [[0, 0], [w, 0], [w, h], [0, h]];
-    const keep = clipHalf(rect, nx, ny, mx, my, 1);
-    const flap = clipHalf(rect, nx, ny, mx - nx * 0.6, my - ny * 0.6, -1); // overlaps the fold by a hair: no hairline gap
-    faceA.style.clipPath = polygon(keep);
-    // back = reflection across the fold ∘ mirror of the page (back-local u ↦ paper x = w − u)
-    const a = 1 - 2 * nx * nx, b = -2 * nx * ny, d = 1 - 2 * ny * ny, k = 2 * (mx * nx + my * ny);
-    faceB.style.transform = `matrix(${(-a).toFixed(5)},${(-b).toFixed(5)},${b.toFixed(5)},${d.toFixed(5)},${(a * w + k * nx).toFixed(2)},${(b * w + k * ny).toFixed(2)})`;
-    faceB.style.clipPath = polygon(flap, w);
-    under.style.clipPath = polygon(flap);
-
-    // light: strongest mid-turn, gone when the sheet is flat on either side
-    const depth = len / 2;
-    const [ex, ey] = rest(t, 1);
-    const s = Math.min(1, depth / 50, Math.hypot(x - ex, y - ey) / 70);
-    const cw = Math.min(depth, w * 0.45) + 8;
-    under.style.background = gradient(nx, ny, mx, my, w, h, [
-      [0, `rgba(0,0,0,${(0.42 * s).toFixed(3)})`], [cw * 0.35, `rgba(0,0,0,${(0.16 * s).toFixed(3)})`], [cw, 'rgba(0,0,0,0)']]);
-    shadeB.style.background = gradient(-nx, ny, w - mx, my, w, h, [
-      [0, `rgba(0,0,0,${(0.2 * s).toFixed(3)})`], [cw * 0.12, `rgba(255,255,255,${(0.2 * s).toFixed(3)})`],
-      [cw * 0.5, `rgba(255,255,255,${(0.05 * s).toFixed(3)})`], [cw * 1.4, `rgba(0,0,0,${(0.07 * s).toFixed(3)})`]]);
-    shadeA.style.background = gradient(-nx, -ny, mx, my, w, h, [
-      [0, `rgba(0,0,0,${(0.1 * s).toFixed(3)})`], [cw * 0.6, 'rgba(0,0,0,0)']]);
-    // the notepad sheet fades as it leaves over the left edge
-    leaf.style.opacity = t.spread ? '' : String(Math.max(0, Math.min(1, (x + w) / (w * 0.45))));
   }
 
   function finishTurn(t, done) {
     leaf.hidden = true;
+    leaf.textContent = '';
     leaf.style.opacity = '';
-    faceA.style.clipPath = '';
-    faceB.style.clipPath = '';
-    faceB.style.transform = '';
+    castL.hidden = true;
+    castR.hidden = true;
     if (done) idx = t.tv[0];
     busy = false;
     render();
@@ -393,30 +405,25 @@ export function initNotebook(section) {
       return ((ay * s + by) * s + cy) * s;
     };
   }
-  const turnEase = bezier(0.42, 0.0, 0.22, 1); // a soft lift, a quick sweep, a gentle landing
-  const releaseEase = bezier(0.2, 0.7, 0.25, 1); // carries the hand's speed, then settles
+  const turnEase = bezier(0.45, 0.05, 0.25, 1); // an unhurried lift, a smooth sweep, a soft landing
+  const releaseEase = bezier(0.22, 0.6, 0.3, 1); // carries the hand's speed, then settles
 
   let anim = 0;
-  // move the corner along path(k) for k in [0, 1]
-  function animate(t, path, dur, ease, then) {
+  function animate(t, p1, dur, ease, then) {
     cancelAnimationFrame(anim);
-    const start = performance.now();
+    const p0 = t.p, start = performance.now();
     const step = (now) => {
       const k = Math.min(1, (now - start) / dur);
-      const [x, y] = path(ease(k));
-      setP(t, x, y);
+      setP(t, p0 + (p1 - p0) * ease(k));
       if (k < 1) anim = requestAnimationFrame(step); else then();
     };
     anim = requestAnimationFrame(step);
   }
-  // from wherever the corner is now to flat (done = false) or turned over (done = true)
+  // from wherever the sheet is now to where it started (done = false) or turned over (done = true)
   function settle(t, done) {
-    const turned = t.fwd ? done : !done;
-    const [x0, y0] = t.P, [x1, y1] = rest(t, turned ? 1 : 0);
-    const dist = Math.hypot(x1 - x0, y1 - y0) / (2 * t.w);
-    const lift = t.h * 0.08 * Math.min(1, dist * 2) * (t.top ? 1 : -1);
-    animate(t, (k) => [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k + lift * Math.sin(Math.PI * k)],
-      260 + 520 * Math.min(1, dist), releaseEase, () => finishTurn(t, done));
+    const goal = t.fwd === done ? t.end : 0;
+    const dist = Math.abs(goal - t.p);
+    animate(t, goal, 320 + 820 * dist / t.end, releaseEase, () => finishTurn(t, done));
   }
 
   function turnTo(target) {
@@ -428,7 +435,7 @@ export function initNotebook(section) {
     refresh();
     const t = prepareTurn(idx, target);
     playFlip();
-    animate(t, (k) => arc(t, t.fwd ? k : 1 - k), TURN_MS, turnEase, () => finishTurn(t, true));
+    animate(t, t.fwd ? t.end : 0, spread ? TURN_MS : TURN_MS * 0.7, turnEase, () => finishTurn(t, true));
   }
 
   function run(action) {
@@ -446,49 +453,52 @@ export function initNotebook(section) {
   }
 
   /* ---------- dragging and peeling ----------
-     With a mouse the sheet's corner follows the pointer (eased a little each frame), so the page
-     folds wherever the hand goes and stops where it stops. Hovering near a page corner lifts it
+     With a mouse the sheet follows the pointer (eased a little each frame), so it lifts as far as
+     the hand goes and stops where it stops. Hovering near a page's outer edge lifts it slightly
      (a peek); pressing there turns the peek into a drag. Touch uses a horizontal swipe, so
      vertical scrolling keeps working. */
   let drag = null;
   let peek = null; // { t, z, goal, raf, leaving }
-  // pointer → leaf coordinates (origin at the top of the spine)
+  // pointer → book coordinates: x from the spine (spread) or from the pad's left edge
   function local(e) {
     const r = bookEl.getBoundingClientRect();
     if (spread) return { x: e.clientX - (r.left + r.width / 2), y: e.clientY - r.top, w: r.width / 2, h: r.height };
-    // notepad: the sheet's width maps onto the corner's whole sweep, right edge to far left
-    return { x: 2 * (e.clientX - r.left) - r.width, y: e.clientY - r.top, w: r.width, h: r.height };
+    return { x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height };
   }
   function zone(e) {
     const { x, y, w, h } = local(e);
     if (y < 0 || y > h) return 0;
+    if (!spread) { // notepad: lift the bottom of the sheet to turn on, the top to bring the last one back
+      if (x < 0 || x > w) return 0;
+      return y > h * (1 - EDGE * 0.8) ? 1 : y < h * 0.16 ? -1 : 0;
+    }
     const u = Math.abs(x) / w;
     if (u < 1 - EDGE || u > 1.02) return 0;
     return x > 0 ? 1 : -1; // 1: next (right edge), -1: previous (left edge)
   }
-  const topHalf = (e) => { const { y, h } = local(e); return y < h / 2; };
-  function startTurn(target, dir, top = false) {
+  // progress of a sheet held at pointer x: 0 at the right page's outer edge, 1 at the left page's
+  const progressAt = ({ x, y, w, h }) => (spread ? clamp01((w - x) / (2 * w)) : clamp01((h - y) / h) * PAD_END * 1.2);
+  function startTurn(target, dir) {
     busy = true;
     stage.classList.add('is-turning');
     refresh();
     const t = prepareTurn(idx, target);
     t.dir = dir;
-    if (top) { t.top = true; setP(t, ...rest(t, t.fwd ? 0 : 1)); }
     return t;
   }
 
   function peekLoop() {
     if (!peek) return;
-    const [x, y] = peek.t.P, [gx, gy] = peek.goal;
-    const nx = x + (gx - x) * 0.2, ny = y + (gy - y) * 0.2;
-    setP(peek.t, nx, ny);
-    if (peek.leaving && Math.hypot(gx - nx, gy - ny) < 0.4) { const t = peek.t; peek = null; finishTurn(t, false); return; }
+    const p = peek.t.p, g = peek.goal;
+    const np = p + (g - p) * 0.14;
+    setP(peek.t, np);
+    if (peek.leaving && Math.abs(g - np) < 0.0008) { const t = peek.t; peek = null; finishTurn(t, false); return; }
     peek.raf = requestAnimationFrame(peekLoop);
   }
   function leavePeek() {
     if (!peek) return;
     peek.leaving = true;
-    peek.goal = rest(peek.t, peek.z > 0 ? 0 : 1);
+    peek.goal = peek.t.fwd ? 0 : peek.t.end;
   }
   function dropPeek() {
     if (!peek) return;
@@ -500,35 +510,30 @@ export function initNotebook(section) {
   function peekAt(e) {
     if (mode !== 'book' || drag || reduce.matches || e.pointerType !== 'mouse') return;
     const z = zone(e);
-    const top = z ? topHalf(e) : false;
-    if (peek && (!z || peek.z !== z || peek.t.top !== top)) { leavePeek(); return; }
+    if (peek && (!z || peek.z !== z)) { leavePeek(); return; }
     const target = z > 0 ? nextTarget() : z < 0 ? prevTarget() : null;
     if (!z || target == null) return;
     if (!peek) {
       if (busy) return;
-      peek = { t: startTurn(target, z > 0 ? -1 : 1, top), z, goal: null, leaving: false };
+      peek = { t: startTurn(target, z > 0 ? -1 : 1), z, goal: 0, leaving: false };
       peek.raf = requestAnimationFrame(peekLoop);
     }
     peek.leaving = false;
-    // the corner lifts toward the pointer, by a small amount
-    const t = peek.t;
-    const [cx, cy] = rest(t, z > 0 ? 0 : 1);
-    const { x, y } = local(e);
-    let vx = (x - cx) * 0.45, vy = (y - cy) * 0.45;
-    vx = z > 0 ? Math.min(vx, -54) : Math.max(vx, 54);
-    vy = top ? Math.max(vy, 36) : Math.min(vy, -36);
-    const m = Math.min(1, (t.w * 0.16) / Math.hypot(vx, vy));
-    peek.goal = [cx + vx * m, cy + vy * m];
+    // the closer to the edge, the more the sheet lifts, but only ever a little
+    const { x, y, w, h } = local(e);
+    const edge = spread ? Math.abs(x) / w : z > 0 ? y / h : 1 - y / h;
+    const lift = 0.035 + 0.045 * clamp01((edge - (1 - EDGE)) / EDGE);
+    peek.goal = peek.t.fwd ? lift : peek.t.end - (spread ? lift : lift * 2.5);
   }
 
   function follow() {
     if (!drag?.started) return;
-    const [x, y] = drag.t.P, [gx, gy] = drag.goal;
-    setP(drag.t, x + (gx - x) * 0.32, y + (gy - y) * 0.32);
+    const p = drag.t.p;
+    setP(drag.t, p + (drag.goal - p) * 0.22);
     drag.raf = requestAnimationFrame(follow);
   }
   function beginDrag(e, t, extra) {
-    drag = { id: e.pointerId, started: true, t, x0: e.clientX, y0: e.clientY, goal: t.P.slice(), ...extra };
+    drag = { id: e.pointerId, started: true, t, x0: e.clientX, y0: e.clientY, goal: t.p, ...extra };
     drag.raf = requestAnimationFrame(follow);
     playFlip();
     try { bookEl.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
@@ -541,7 +546,7 @@ export function initNotebook(section) {
       const z = zone(e);
       if (!z) return;
       e.preventDefault();
-      if (peek && peek.z === z && peek.t.top === topHalf(e)) {
+      if (peek && peek.z === z) {
         cancelAnimationFrame(peek.raf);
         const t = peek.t;
         peek = null;
@@ -553,7 +558,7 @@ export function initNotebook(section) {
       if (busy) return;
       const target = z > 0 ? nextTarget() : prevTarget();
       if (target == null || reduce.matches) return;
-      beginDrag(e, startTurn(target, z > 0 ? -1 : 1, topHalf(e)), { mouse: true });
+      beginDrag(e, startTurn(target, z > 0 ? -1 : 1), { mouse: true });
       onMove(e);
       return;
     }
@@ -565,8 +570,9 @@ export function initNotebook(section) {
     if (!drag) { peekAt(e); return; }
     if (e.pointerId !== drag.id) return;
     if (drag.mouse) {
-      const { x, y } = local(e);
-      drag.goal = [x, y];
+      const p = progressAt(local(e));
+      // a drag from the left page starts from its own edge, wherever the pointer is
+      drag.goal = drag.t.fwd ? Math.max(p, 0.02) : Math.min(p, drag.t.end - 0.02);
       drag.vx = e.movementX || 0;
       drag.lastT = performance.now();
       return;
@@ -587,9 +593,10 @@ export function initNotebook(section) {
       }
     }
     if (drag?.started) {
-      const p = Math.max(0, Math.min(1, Math.abs(dx) / (drag.w * (spread ? 2 : 1.2))));
-      drag.goal = arc(drag.t, drag.t.fwd ? p : 1 - p);
-      drag.lastX = e.clientX;
+      const k = clamp01(Math.abs(dx) / (drag.w * (spread ? 1.6 : 1.1)));
+      drag.goal = (drag.t.fwd ? k : 1 - k) * drag.t.end;
+      drag.vx = e.movementX || dx - (drag.lastDx ?? 0);
+      drag.lastDx = dx;
       drag.lastT = performance.now();
     }
   }
@@ -600,11 +607,10 @@ export function initNotebook(section) {
     cancelAnimationFrame(d.raf);
     if (d.reduced != null && Math.abs(e.clientX - d.x0) > 50) { idx = spreadOf(d.reduced)[0]; render(); return; }
     if (!d.started) { if (pending) { const a = pending; pending = null; a(); } return; }
-    const a = aOf(d.t, d.goal[0]);
-    const p = d.t.fwd ? a : 1 - a;
+    const turned = d.t.fwd ? d.goal / d.t.end : 1 - d.goal / d.t.end;
     const moving = d.lastT && performance.now() - d.lastT < 80;
     const flickToward = moving && Math.abs(d.vx || 0) > 6 && ((d.t.dir < 0 && d.vx < 0) || (d.t.dir > 0 && d.vx > 0));
-    const complete = p > 0.5 || flickToward || (!d.mouse && (p > 0.33 || (moving && Math.abs(e.clientX - d.x0) > 40)));
+    const complete = turned > 0.5 || flickToward || (!d.mouse && (turned > 0.3 || (moving && Math.abs(e.clientX - d.x0) > 40)));
     settle(d.t, complete);
   }
   function onCancel(e) {
@@ -715,5 +721,12 @@ export function initNotebook(section) {
   if (i >= 0) { idx = spreadOf(pageOfXp(i))[0]; render(); }
 
   // test hook (read-only state)
-  shell.notebook = { state: () => ({ idx, spread, busy, visible: spreadOf(idx), mode }), next, prev, go };
+  shell.notebook = { state: () => ({ idx, spread, busy, visible: spreadOf(idx), mode }), next, prev, go,
+    // hold a forward turn at progress p (0–1), for checking frames; pose(null) puts it back
+    pose(p) {
+      if (p == null) { if (posed) { finishTurn(posed, false); posed = null; } return; }
+      if (!posed) { const n = nextTarget(); if (n == null) return; busy = true; posed = prepareTurn(idx, n); }
+      setP(posed, p);
+    } };
+  let posed = null;
 }
