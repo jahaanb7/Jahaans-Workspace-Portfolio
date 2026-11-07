@@ -433,8 +433,7 @@ sub { line-height: 0; }
   background: rgba(225, 223, 215, 0.72); box-shadow: 0 1px 1px rgba(0, 0, 0, 0.12);
 }
 .qs-polaroid:nth-child(even)::before { left: auto; right: 18px; transform: rotate(7deg); }
-.qs-formula { grid-column: 1 / -1; justify-self: center; margin: 0.4rem 0 0.6rem; padding: 0.5rem 0.9rem; border: 1px dashed var(--rule); color: var(--ink); font-size: 0.78rem; letter-spacing: 0.04em; transform: rotate(var(--r, 0deg)); }
-.qs-strip { grid-column: 1 / -1; padding-top: 1.4rem; }
+.qs-strip { grid-column: 1 / -1; margin-top: 1.6rem; padding-top: 1.4rem; }
 .qs-strip::before { left: 50%; margin-left: -35px; }
 .qs-strip .ras-math { margin-top: -2.6rem; }
 /* live orbital print: navy ink dots on the same cream paper */
@@ -1055,7 +1054,7 @@ a { color: inherit; }
 .nb-page .xp-b > :is(.xp-fig, .xp-code, .xp-sketch) ~ :is(.xp-fig, .xp-code, .xp-sketch) { display: none; }
 
 /* maths is case-sensitive: never uppercase it */
-.ras-live, .qs-formula, .qs-strip figcaption, .qs-polaroid figcaption .mono { text-transform: none; }
+.ras-live, .qs-strip figcaption, .qs-polaroid figcaption .mono { text-transform: none; }
 .ras-math sub, .ras-eq sub { font-size: 0.62em; line-height: 0; }
 
 /* numbered labels share the tagline's typeface (Bricolage Grotesque), in sentence case */
