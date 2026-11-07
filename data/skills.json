@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "about": "Methods and instruments. Each tool lists only projects whose repositories show it in use. No proficiency scores. Run `node tools/build-catalogue.mjs` after editing.",
+  "columns": ["rasterix", "quantumsim", "fluid-simulation", "particle-simulation", "lorenz", "ml-notebooks", "myelovar", "buffy", "orion", "chladni-plate"],
+  "columnLabels": {
+    "rasterix": "Rasterix",
+    "quantumsim": "QuantumSim",
+    "fluid-simulation": "Fluid",
+    "particle-simulation": "Particles",
+    "lorenz": "Lorenz",
+    "ml-notebooks": "ML notebooks",
+    "myelovar": "Myelovar",
+    "buffy": "Buffy",
+    "orion": "Orion",
+    "chladni-plate": "Chladni"
+  },
+  "groups": [
+    {
+      "id": "computation",
+      "title": "Computation",
+      "summary": "Languages and numerical or graphics tools, each tied to something that runs.",
+      "glyph": "mesh",
+      "tools": [
+        { "name": "Java", "use": "Software rasterizer, no graphics API", "projects": ["rasterix"] },
+        { "name": "C++", "use": "SPH fluid and particle simulations", "projects": ["fluid-simulation", "particle-simulation"] },
+        { "name": "OpenGL", "use": "Real-time rendering of the simulations", "projects": ["fluid-simulation", "particle-simulation"] },
+        { "name": "JavaScript", "use": "Orbital sampling and split-step solver in the browser", "projects": ["quantumsim"] },
+        { "name": "Three.js", "use": "3D view of the orbital point clouds", "projects": ["quantumsim"] },
+        { "name": "Python", "use": "Notebooks and a genomics pipeline", "projects": ["lorenz", "ml-notebooks", "myelovar"] },
+        { "name": "NumPy", "use": "Regression written from the linear algebra", "projects": ["ml-notebooks"] },
+        { "name": "TypeScript and Electron", "use": "Desktop assistant with a tested permission policy", "projects": ["buffy"] }
+      ]
+    },
+    {
+      "id": "electronics",
+      "title": "Electronics",
+      "summary": "Schematic capture in KiCad. Nothing here has been assembled yet.",
+      "glyph": "schematic",
+      "tools": [
+        { "name": "KiCad", "use": "Five schematic sheets for Orion; the Chladni plate schematic", "projects": ["orion", "chladni-plate"] },
+        { "name": "Power regulation", "use": "Two buck converters and two LDO rails on the Orion power sheet", "projects": ["orion"] },
+        { "name": "Sensor buses", "use": "Three IMUs, two barometers and a magnetometer on separate SPI buses", "projects": ["orion"] },
+        { "name": "Audio amplifier wiring", "use": "TPA3116D2 amplifier driving a 6.5\" subwoofer", "projects": ["chladni-plate"] }
+      ]
+    },
+    {
+      "id": "mechanical",
+      "title": "Mechanical design",
+      "summary": "Parts modelled in Fusion 360 and exported for printing. Designs, not yet built.",
+      "glyph": "cylinder",
+      "tools": [
+        { "name": "Fusion 360", "use": "Orion airframe and the Chladni plate enclosure", "projects": ["orion", "chladni-plate"] },
+        { "name": "Airframe layout", "use": "Nose cone, payload bay, body tube and motor mount as separate STL parts", "projects": ["orion"] },
+        { "name": "Printed enclosure design", "use": "Enclosure with M3 and M5 heat-set inserts, exported as STEP and STL", "projects": ["chladni-plate"] }
+      ]
+    }
+  ]
+}

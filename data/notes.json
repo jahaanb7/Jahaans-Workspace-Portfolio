@@ -1,0 +1,24 @@
+{
+  "notes": [
+    {
+      "id": "schrodinger-part-1",
+      "title": "Schrödinger's Equation for Dummies, Part I: Historical Overview",
+      "summary": "From Newton and Huygens arguing about light, through the double slit, the ultraviolet catastrophe, Planck, Einstein, Bohr and de Broglie, to the question Schrödinger set out to answer.",
+      "publishedAt": "2026-08-17",
+      "readingMinutes": 9,
+      "url": "https://medium.com/@jeyubhavsar/schr%C3%B6dingers-equation-for-dummies-part-i-historical-overview-92250056f33b",
+      "venue": "Medium",
+      "related": "quantumsim"
+    },
+    {
+      "id": "schrodinger-part-2",
+      "title": "Schrödinger's Equation for Dummies, Part II: Decoding the Equation",
+      "summary": "Builds the equation from a plain sine wave: amplitude, phase and wavelength, why complex numbers are needed to describe rotation, and how the energy operator falls out of the wave function.",
+      "publishedAt": "2026-08-28",
+      "readingMinutes": 8,
+      "url": "https://medium.com/@jeyubhavsar/schr%C3%B6dingers-equation-for-dummies-part-ii-decoding-the-equation-0e9dad3f9f3b",
+      "venue": "Medium",
+      "related": "quantumsim"
+    }
+  ]
+}

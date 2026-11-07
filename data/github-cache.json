@@ -1,0 +1,94 @@
+{
+  "owner": "jahaanb7",
+  "fetchedAt": "2026-11-06T19:55:00.880Z",
+  "repos": {
+    "Rasterix-Software-Rasterizer-": {
+      "htmlUrl": "https://github.com/jahaanb7/Rasterix-Software-Rasterizer-",
+      "description": "A basic 3D Graphic Software Rasterizer made in Java without any external graphic libraries",
+      "language": "Java",
+      "pushedAt": "2026-02-02T03:22:32Z",
+      "updatedAt": "2026-07-18T14:35:59Z",
+      "archived": false
+    },
+    "QuantumSim": {
+      "htmlUrl": "https://github.com/jahaanb7/QuantumSim",
+      "description": "Interactive quantum physics simulations designed to explore fundamental quantum concepts, visualize quantum phenomena, and make learning through experimentation accessible.",
+      "language": "JavaScript",
+      "pushedAt": "2026-11-04T21:53:34Z",
+      "updatedAt": "2026-11-04T21:53:38Z",
+      "archived": false
+    },
+    "Fluid-Simulation": {
+      "htmlUrl": "https://github.com/jahaanb7/Fluid-Simulation",
+      "description": "Creating a fluid Simulation in C++ using OpenGL inspired by Sebastion Lague",
+      "language": "C",
+      "pushedAt": "2026-04-24T02:16:14Z",
+      "updatedAt": "2026-04-24T02:16:18Z",
+      "archived": false
+    },
+    "Orion": {
+      "htmlUrl": "https://github.com/jahaanb7/Orion",
+      "description": "Making a High Speed Drone from scratch",
+      "language": "",
+      "pushedAt": "2026-10-06T03:31:30Z",
+      "updatedAt": "2026-10-06T03:31:35Z",
+      "archived": false
+    },
+    "RadioTelescope_ALTAS": {
+      "htmlUrl": "https://github.com/jahaanb7/RadioTelescope_ALTAS",
+      "description": "A custom 1 meter radio telescope detecting hydrogen lines. ",
+      "language": "",
+      "pushedAt": "2026-11-03T01:02:41Z",
+      "updatedAt": "2026-11-03T01:02:47Z",
+      "archived": false
+    },
+    "ChladniPlate": {
+      "htmlUrl": "https://github.com/jahaanb7/ChladniPlate",
+      "description": "DIY Chladni plate (metal plate, transducer, signal generator) that visualizes sound as sand patterns, plus custom software generating unique nodal patterns from frequencies via wave-equation math (Chladni modes, Bessel functions), with mode blending & animated sweeps.",
+      "language": "",
+      "pushedAt": "2026-10-02T05:48:25Z",
+      "updatedAt": "2026-10-02T05:48:29Z",
+      "archived": false
+    },
+    "BioMedizone_Hackathon": {
+      "htmlUrl": "https://github.com/jahaanb7/BioMedizone_Hackathon",
+      "description": "",
+      "language": "Python",
+      "pushedAt": "2026-10-04T13:09:53Z",
+      "updatedAt": "2026-10-04T13:09:58Z",
+      "archived": false
+    },
+    "Science-Simulations": {
+      "htmlUrl": "https://github.com/jahaanb7/Science-Simulations",
+      "description": "Creating an entire interactive space simulation, it will include black hole simulation, light, and much more. Built in C using OpenGL. Hoping to learn more about graphics programming, and astronomy at the same time.",
+      "language": "Makefile",
+      "pushedAt": "2026-03-07T00:08:14Z",
+      "updatedAt": "2026-03-06T23:50:55Z",
+      "archived": false
+    },
+    "J.A.R.V.I.S": {
+      "htmlUrl": "https://github.com/jahaanb7/J.A.R.V.I.S",
+      "description": "Making my very own transformer based LLM from scratch using python.",
+      "language": "TypeScript",
+      "pushedAt": "2026-10-22T19:39:00Z",
+      "updatedAt": "2026-10-22T19:39:04Z",
+      "archived": false
+    },
+    "Lorenz-Attractor-Simulation": {
+      "htmlUrl": "https://github.com/jahaanb7/Lorenz-Attractor-Simulation",
+      "description": "Simulation of Lorenz Attractor in python using matplotlib",
+      "language": "Jupyter Notebook",
+      "pushedAt": "2025-12-27T02:24:22Z",
+      "updatedAt": "2025-12-27T02:24:25Z",
+      "archived": false
+    },
+    "Machine-Learning-Models": {
+      "htmlUrl": "https://github.com/jahaanb7/Machine-Learning-Models",
+      "description": "Making different types of Machine Learning models from scratch, only using numpy, pandas, and matplotlib",
+      "language": "Jupyter Notebook",
+      "pushedAt": "2026-02-12T03:11:18Z",
+      "updatedAt": "2026-02-12T03:11:21Z",
+      "archived": false
+    }
+  }
+}

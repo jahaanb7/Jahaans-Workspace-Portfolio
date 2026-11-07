@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QuantumSim: making quantum probability explorable · Jahaan Bhavsar</title>
+  <meta name="description" content="QuantumSim is a browser lab for hydrogen-like orbitals, a particle in a 2D box, and wave-packet tunneling, solved with Monte Carlo sampling and a split-step Fourier method.">
+  <meta name="theme-color" content="#000000">
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="QuantumSim · Jahaan Bhavsar">
+  <meta property="og:description" content="How can you make quantum probability something you can explore?">
+  <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/bricolage-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="preload" href="../assets/fonts/newsreader-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="../js/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="navbar is-stuck" data-navbar>
+    <div class="wrap navbar-inner">
+      <a class="navbar-brand" href="../">Jahaan Bhavsar</a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav class="nav" id="site-nav" aria-label="Primary">
+        <ul>
+          <li><a href="../#investigations" aria-current="page"><span class="nav-no" aria-hidden="true">01</span>Investigations</a></li>
+          <li><a href="../#workbench"><span class="nav-no" aria-hidden="true">02</span>Workbench</a></li>
+          <li><a href="../#notebook"><span class="nav-no" aria-hidden="true">03</span>Scratchbook</a></li>
+          <li><a href="../#instruments"><span class="nav-no" aria-hidden="true">04</span>Tools</a></li>
+          <li><a href="../#writing"><span class="nav-no" aria-hidden="true">05</span>Writing</a></li>
+          <li><a class="nav-cta" href="../#contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme"><svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg><svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </div>
+  </div>
+
+  <main id="main">
+    <div class="wrap">
+      <p class="breadcrumb"><a href="../#quantumsim">← Back to the scratchbook</a></p>
+
+      <header class="cs-hero">
+        <p class="label">Case study 02 · Simulation · JavaScript</p>
+        <h1>QuantumSim</h1>
+        <p class="question">How can you make quantum probability something you can explore?</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/jahaanb7/QuantumSim">Source <span class="arrow" aria-hidden="true">↗</span></a>
+          <a class="btn" href="https://github.com/jahaanb7/QuantumSim/blob/main/docs/EXPLAINER.md">Field guide <span class="arrow" aria-hidden="true">↗</span></a>
+        </div>
+        <dl class="cs-facts">
+          <div><dt>Status</dt><dd><span class="status" data-status="Working prototype">Working prototype</span></dd></div>
+          <div><dt>Stack</dt><dd>ES modules, Three.js r180, WebGL2</dd></div>
+          <div><dt>Size</dt><dd>About 6,600 lines plus a 1,600-line guide</dd></div>
+          <div><dt>Last updated</dt><dd><time datetime="2026-11-04">November 4, 2026</time></dd></div>
+        </dl>
+      </header>
+
+      <figure class="cs-figure">
+        <img src="../assets/images/quantumsim-orbital.webp" width="1600" height="1000" alt="QuantumSim's orbital builder: a 3d z-squared orbital drawn as a dense blue and white point cloud, with quantum number controls on the right.">
+        <figcaption>The orbital builder showing 3d<sub>z²</sub>. Each dot is one sample drawn from |ψ|². Screenshot of the app running locally in Chrome, November 6, 2026.</figcaption>
+      </figure>
+
+      <section class="cs-section" aria-labelledby="overview">
+        <header><span class="label">Overview</span><h2 id="overview">What it is</h2></header>
+        <div>
+          <p>In quantum mechanics you cannot say where an electron is, only how likely it is to be found in each place. That probability comes from the wave function ψ: the chance of finding the particle near a point is proportional to |ψ|² there. This is the Born rule.</p>
+          <p>QuantumSim turns that into three things you can play with in a browser: atomic orbitals as clouds of sampled points, a particle trapped in a square box, and a wave packet hitting a barrier and partly tunnelling through. A fourth page, the field guide, explains the physics and lists what the app does not model.</p>
+          <p>There is no server. Every number on screen is computed on the visitor's machine.</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="model">
+        <header><span class="label">Model</span><h2 id="model">The maths</h2></header>
+        <div>
+          <p><strong>Orbitals.</strong> For a hydrogen-like atom, ψ separates into a radial part and an angular part. To draw a cloud, QuantumSim builds the cumulative distribution of the radial probability r²|R(r)|², picks a radius by inverting it with a binary search, then picks a direction by rejection sampling the angular part. Dense regions of dots are regions of high probability.</p>
+          <p><strong>Tunnelling.</strong> The time-dependent Schrödinger equation (in units where ħ = m = 1) is</p>
+          <div class="equation" role="math" aria-label="Time-dependent Schrödinger equation">i ∂ψ/∂t = −½ ∂²ψ/∂x² + V(x) ψ</div>
+          <p>The potential term is simple in position space and the kinetic term is simple in momentum space. The split-step Fourier method takes advantage of that: half a step of potential, a Fourier transform, a full step of kinetic energy, an inverse transform, then the other half step of potential.</p>
+          <div class="equation" role="math" aria-label="Split-step update">ψ(t+dt) ≈ e^(−iV dt/2) · F⁻¹[ e^(−ik² dt/2) · F[ e^(−iV dt/2) ψ(t) ] ]</div>
+          <figure>
+            <img src="../assets/images/qs-fig09-splitstep.webp" width="1400" height="368" loading="lazy" alt="Diagram of one split-step update: half potential step, FFT, kinetic step, inverse FFT, half potential step.">
+            <figcaption>One time step, from the QuantumSim field guide. The figure was generated from the same modules the app uses.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="impl">
+        <header><span class="label">Implementation</span><h2 id="impl">How the code is laid out</h2></header>
+        <div>
+          <ul class="limits">
+            <li><code>src/physics/orbitals.js</code>: exact radial functions (generalised Laguerre polynomials), real angular shapes, the radial CDF and the sampler.</li>
+            <li><code>src/physics/tdse.js</code> and <code>fft.js</code>: the split-step solver and a radix-2 FFT, on a 1,024-point grid.</li>
+            <li><code>src/views/*.js</code>: one view per route. Each owns its Three.js scene and disposes it on exit.</li>
+            <li><code>docs/EXPLAINER.md</code>: the field guide, with worked numbers taken from the code.</li>
+          </ul>
+          <p>The kinetic step, from <code>simulate()</code> in <code>tdse.js</code>. ψ is stored as separate real and imaginary arrays, so multiplying by a phase is written out by hand:</p>
+<pre><code>// Full kinetic step in momentum space
+fft(psiR, psiI);
+for (let i = 0; i &lt; N; i++) {
+  const r = psiR[i];
+  const m = psiI[i];
+  const pr = kineticHalfR[i];
+  const pi = kineticHalfI[i];
+  psiR[i] = r * pr - m * pi;
+  psiI[i] = r * pi + m * pr;
+}
+ifft(psiR, psiI);</code></pre>
+          <p class="src-ref">src/physics/tdse.js, lines 226 to 236</p>
+          <figure>
+            <img src="../assets/images/quantumsim-tunneling.webp" width="1600" height="1000" loading="lazy" alt="The tunnelling page: a striped blue wave packet to the left of a thin barrier, with a probability density trace along the bottom and controls on the right.">
+            <figcaption>The tunnelling experiment before the packet reaches the barrier.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="decision">
+        <header><span class="label">Design decision</span><h2 id="decision">Physics with no DOM</h2></header>
+        <div>
+          <p>The physics modules never touch the page. They take numbers and return arrays. The views do the drawing.</p>
+          <p>That separation is what makes the next section possible: the solver can be imported straight into Node and checked against a known answer, with no browser involved. It also means the field guide's figures come from the same functions the app runs, so the article cannot quietly drift away from the code.</p>
+        </div>
+      </section>
+
+      <section class="cs-section" id="evidence" aria-labelledby="obs">
+        <header><span class="label">Observation</span><h2 id="obs">Checking the solver</h2></header>
+        <div>
+          <p>The README includes a sanity check. On November 6, 2026 I ran it again in Node with the default settings (packet energy 2, barrier height 4, width 1.2):</p>
+<pre><code>{ norm: '1.0000', packetT: '0.0404', planeWaveT: '0.0324', grid: 1024, frames: 121 }</code></pre>
+          <ul class="limits">
+            <li><strong>Norm 1.0000:</strong> total probability is conserved, as it must be.</li>
+            <li><strong>Transmission 0.0404 vs 0.0324:</strong> about 4% of the packet gets through. The analytic number is for a single plane wave at exactly that energy. A real packet contains a spread of energies, and the higher-energy part tunnels more easily, so the packet's transmission should come out a little higher, and it does.</li>
+          </ul>
+          <figure>
+            <img src="../assets/images/qs-fig06-tunnel-snapshots.webp" width="1400" height="950" loading="lazy" alt="Four snapshots of probability density over time: a packet approaching a barrier, splitting into a large reflected part and a small transmitted part.">
+            <figcaption>Probability density at four moments during a tunnelling run. From the field guide, exported from <code>tdse.js</code>.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/images/qs-fig03-clouds.webp" width="1400" height="1390" loading="lazy" alt="A grid of orbital point clouds for several combinations of n, l and m.">
+            <figcaption>Orbital clouds sampled by <code>orbitals.js</code> for several quantum numbers.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="limits">
+        <header><span class="label">Limits and next question</span><h2 id="limits">What it does not model</h2></header>
+        <div>
+          <ul class="limits">
+            <li>The orbitals use a one-electron, hydrogen-like model with screened charge. They get the shapes and trends right, not real many-electron energies.</li>
+            <li>Tunnelling is one-dimensional, single-particle, and uses an ideal rectangular barrier. The narrowest barrier preset is only marginally resolved by the grid.</li>
+            <li>The 3D cloud on the tunnelling page is a visual aid; the simulation itself is 1D.</li>
+            <li>There is no public hosted build yet. To try it, clone the repository and run <code>python3 -m http.server</code>.</li>
+          </ul>
+          <p><strong>Next question:</strong> what does tunnelling look like in two dimensions, where a packet can go around an obstacle as well as through it?</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="writing">
+        <header><span class="label">Related writing</span><h2 id="writing">Schrödinger's Equation for Dummies</h2></header>
+        <div>
+          <p>Before building this I wrote a two-part explainer on where the equation comes from: <a href="https://medium.com/@jeyubhavsar/schr%C3%B6dingers-equation-for-dummies-part-i-historical-overview-92250056f33b">Part I, the history</a>, and <a href="https://medium.com/@jeyubhavsar/schr%C3%B6dingers-equation-for-dummies-part-ii-decoding-the-equation-0e9dad3f9f3b">Part II, decoding the equation</a>.</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="credits">
+        <header><span class="label">Credits</span><h2 id="credits">Dependencies</h2></header>
+        <div><p>Three.js r180 (MIT licence), vendored in the repository. Atomic reference data are standard tabulated values.</p></div>
+      </section>
+
+      <nav class="pager" aria-label="Case studies">
+        <a href="rasterix.html">← Rasterix</a>
+        <a href="fluid-simulation.html">Next: Fluid simulation →</a>
+      </nav>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div><p>© <span data-year>2026</span> Jahaan Bhavsar</p><p>Built by hand with HTML, CSS and JavaScript.</p></div>
+      <div><p class="label">Projects</p><ul><li><a href="rasterix.html">Rasterix</a></li><li><a href="quantumsim.html">QuantumSim</a></li><li><a href="fluid-simulation.html">Fluid simulation</a></li></ul></div>
+      <div><p class="label">Elsewhere</p><ul><li><a href="https://github.com/jahaanb7">GitHub</a></li></ul></div>
+    </div>
+  </footer>
+</body>
+</html>

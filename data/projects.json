@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "statuses": [
+    "Working prototype",
+    "In progress",
+    "Planned",
+    "Archived"
+  ],
+  "projects": [
+    {
+      "id": "rasterix",
+      "title": "Rasterix",
+      "question": "How does a triangle become a pixel?",
+      "summary": "A software rasterizer in Java. It loads OBJ meshes, projects them with a perspective matrix, fills triangles with barycentric weights, and resolves overlap with a depth buffer. Java's BufferedImage is only used to show the finished pixels.",
+      "category": "Graphics",
+      "tags": [
+        "Java",
+        "Graphics pipeline",
+        "Linear algebra"
+      ],
+      "status": "Working prototype",
+      "featured": true,
+      "sortOrder": 1,
+      "repoUrl": "https://github.com/jahaanb7/Rasterix-Software-Rasterizer-",
+      "demoUrl": "https://github.com/jahaanb7/Rasterix-Software-Rasterizer-/releases/tag/v1.3.0",
+      "demoLabel": "Download v1.3.0",
+      "caseStudyUrl": "projects/rasterix.html",
+      "image": "assets/images/rasterix-textured.webp",
+      "imageWidth": 720,
+      "imageHeight": 720,
+      "imageAlt": "A textured human head model rendered by Rasterix on a black background.",
+      "updatedAt": "2026-02-02",
+      "milestone": "v1.3.0 released for macOS, Windows and Linux.",
+      "nextStep": "Perspective-correct texture interpolation and a measured frame-time benchmark.",
+      "evidence": [
+        "Compiles with javac 25 (checked 2026-11-06)",
+        "Screenshots rendered by the engine's own render() method",
+        "4 GitHub releases, CI build passing"
+      ],
+      "credits": [
+        "Suzanne mesh from Blender",
+        "Stanford bunny"
+      ]
+    },
+    {
+      "id": "quantumsim",
+      "title": "QuantumSim",
+      "question": "How can you make quantum probability something you can explore?",
+      "summary": "A browser lab for hydrogen-like orbitals, a particle in a 2D box, and wave-packet tunneling. The clouds are Monte Carlo samples of |ψ|², and tunneling runs a split-step Fourier solver of the time-dependent Schrödinger equation.",
+      "category": "Simulation",
+      "tags": [
+        "JavaScript",
+        "Three.js",
+        "Quantum mechanics",
+        "Numerical methods"
+      ],
+      "status": "Working prototype",
+      "featured": true,
+      "sortOrder": 2,
+      "repoUrl": "https://github.com/jahaanb7/QuantumSim",
+      "demoUrl": "",
+      "caseStudyUrl": "projects/quantumsim.html",
+      "image": "assets/images/quantumsim-orbital.webp",
+      "imageWidth": 1600,
+      "imageHeight": 1000,
+      "imageAlt": "QuantumSim showing a 3d z-squared orbital as a blue and white point cloud with its control panel.",
+      "updatedAt": "2026-11-04",
+      "milestone": "Version 2.5 with a field guide that derives every equation from the code.",
+      "nextStep": "Host a public build and add a 3D isosurface view.",
+      "evidence": [
+        "Tunneling sanity check reproduced in Node: norm 1.0000, transmission 0.0404 vs 0.0324 analytic",
+        "10 figures generated from the physics modules"
+      ],
+      "credits": [
+        "Three.js r180 (MIT)"
+      ]
+    },
+    {
+      "id": "fluid-simulation",
+      "title": "Fluid simulation",
+      "question": "How can a few thousand particles act like a fluid?",
+      "summary": "A 3D smoothed particle hydrodynamics (SPH) simulation in C++ and OpenGL. Each particle estimates density from its neighbours, turns it into pressure, and feels viscosity, all through smoothing kernels.",
+      "category": "Simulation",
+      "tags": [
+        "C++",
+        "OpenGL",
+        "SPH",
+        "OpenMP"
+      ],
+      "status": "Working prototype",
+      "featured": true,
+      "sortOrder": 3,
+      "repoUrl": "https://github.com/jahaanb7/Fluid-Simulation",
+      "demoUrl": "",
+      "caseStudyUrl": "projects/fluid-simulation.html",
+      "image": "assets/images/fluid-detail.webp",
+      "imageWidth": 1400,
+      "imageHeight": 765,
+      "imageAlt": "Thousands of blue particles spreading across the floor of the simulation box, coloured by speed.",
+      "updatedAt": "2026-04-24",
+      "milestone": "Interactive 3D SPH with 3,375 particles, live sliders and mouse stirring.",
+      "nextStep": "Fix the cross-platform CI build and measure density error over time.",
+      "evidence": [
+        "Built locally with CMake on macOS (2026-11-06)",
+        "Frames captured from the running program"
+      ],
+      "credits": [
+        "Inspired by Sebastian Lague's fluid simulation video",
+        "GLFW, GLAD, Dear ImGui, GLM"
+      ]
+    },
+    {
+      "id": "orion",
+      "title": "Orion",
+      "question": "Can I keep a small rocket vertical with a gimballed motor and my own flight computer?",
+      "summary": "A thrust-vector-controlled model rocket with a custom flight computer. Right now it exists as KiCad schematics, CAD and a design journal. Nothing has been built or flown.",
+      "category": "Hardware",
+      "tags": [
+        "KiCad",
+        "Control systems",
+        "CAD",
+        "Embedded"
+      ],
+      "status": "In progress",
+      "featured": false,
+      "sortOrder": 10,
+      "repoUrl": "https://github.com/jahaanb7/Orion",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "assets/images/orion-cad.webp",
+      "imageWidth": 1400,
+      "imageHeight": 1177,
+      "imageAlt": "CAD model of the Orion rocket: elliptical nose cone, support rods and body tubes shown apart.",
+      "updatedAt": "2026-10-06",
+      "milestone": "Schematic sheets for power, navigation sensors and flight compute; first airframe CAD (journal, Sept 14 to 20, 2026).",
+      "nextStep": "Finish the schematic, start PCB layout, and model the rocket in OpenRocket.",
+      "evidence": [
+        "5 KiCad schematic sheets",
+        "Airframe STL files",
+        "Week 1 design journal"
+      ],
+      "credits": []
+    },
+    {
+      "id": "atlas",
+      "title": "ATLAS radio telescope",
+      "question": "Can a one-metre dish I build detect the 21 cm hydrogen line?",
+      "summary": "A planned hydrogen-line radio telescope. Neutral hydrogen emits at 1420.4 MHz; picking that up from the Milky Way is a classic first radio astronomy project. No hardware or data yet.",
+      "category": "Hardware",
+      "tags": [
+        "Radio astronomy",
+        "Signal processing"
+      ],
+      "status": "Planned",
+      "featured": false,
+      "sortOrder": 11,
+      "repoUrl": "https://github.com/jahaanb7/RadioTelescope_ALTAS",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "",
+      "imageAlt": "",
+      "updatedAt": "2026-11-03",
+      "milestone": "Repository created.",
+      "nextStep": "Choose the feed, LNA and SDR, and document the receive chain.",
+      "evidence": [],
+      "credits": []
+    },
+    {
+      "id": "chladni-plate",
+      "title": "Chladni plate",
+      "question": "What does a standing wave on a metal plate look like?",
+      "summary": "A Chladni plate driven by a subwoofer and a TPA3116 amplifier, with a 3D-printed enclosure. The design, wiring and costed bill of materials are documented; it has not been built yet.",
+      "category": "Hardware",
+      "tags": [
+        "Acoustics",
+        "KiCad",
+        "CAD"
+      ],
+      "status": "In progress",
+      "featured": false,
+      "sortOrder": 12,
+      "repoUrl": "https://github.com/jahaanb7/ChladniPlate",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "assets/images/chladni-wiring.webp",
+      "imageWidth": 1400,
+      "imageHeight": 986,
+      "imageAlt": "Electrical schematic for the Chladni plate: audio input, TPA3116 amplifier board and subwoofer driver.",
+      "updatedAt": "2026-10-02",
+      "milestone": "Enclosure CAD, schematic and a CA$83 bill of materials.",
+      "nextStep": "Print the enclosure, assemble, and photograph the first patterns.",
+      "evidence": [
+        "STEP and STL enclosure",
+        "Schematic PDF",
+        "Costed BOM"
+      ],
+      "credits": []
+    },
+    {
+      "id": "myelovar",
+      "title": "Myelovar",
+      "question": "Which non-coding variants could plausibly matter in multiple myeloma, and why?",
+      "summary": "A research pipeline built for a hackathon. It filters variants to regulatory regions in myeloma cells, scores transcription factor motif disruption, links each element to a target gene, and writes a plain-English evidence chain. Research use only, not a diagnostic.",
+      "category": "Computational biology",
+      "tags": [
+        "Python",
+        "FastAPI",
+        "React",
+        "Genomics"
+      ],
+      "status": "Working prototype",
+      "featured": false,
+      "sortOrder": 20,
+      "repoUrl": "https://github.com/jahaanb7/BioMedizone_Hackathon",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "assets/images/myelovar-funnel.webp",
+      "imageWidth": 1170,
+      "imageHeight": 546,
+      "imageAlt": "Bar chart of how many variants survive each step of the Myelovar filtering funnel.",
+      "updatedAt": "2026-10-04",
+      "milestone": "Seven-stage pipeline with REST API, web UI and tests.",
+      "nextStep": "",
+      "evidence": [
+        "Pipeline stages s0 to s6 in source",
+        "Validation figures in repository (not independently verified)"
+      ],
+      "credits": [
+        "ENCODE, JASPAR, DepMap, GWAS Catalog public data"
+      ]
+    },
+    {
+      "id": "particle-simulation",
+      "title": "Particle simulation",
+      "question": "What happens when particles only feel gravity and each other?",
+      "summary": "C++ and OpenGL particles with Velocity Verlet integration, inverse-square gravity, elastic collisions and a containing sphere. Builds for macOS, Linux and Windows.",
+      "category": "Simulation",
+      "tags": [
+        "C++",
+        "OpenGL",
+        "Numerical integration"
+      ],
+      "status": "Working prototype",
+      "featured": false,
+      "sortOrder": 21,
+      "repoUrl": "https://github.com/jahaanb7/Science-Simulations",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "",
+      "imageAlt": "",
+      "updatedAt": "2026-03-07",
+      "milestone": "v1.1 release with builds for three operating systems.",
+      "nextStep": "",
+      "evidence": [
+        "2 releases",
+        "CI build passing"
+      ],
+      "credits": []
+    },
+    {
+      "id": "buffy",
+      "title": "Buffy",
+      "question": "What would a personal assistant look like if I could read every line of it?",
+      "summary": "A desktop assistant in Electron and TypeScript. It runs a local model through Ollama or Claude through the API, and any file write or shell command waits for my approval. It grew out of an earlier Python voice prototype.",
+      "category": "Software",
+      "tags": [
+        "TypeScript",
+        "Electron",
+        "LLM tools"
+      ],
+      "status": "In progress",
+      "featured": false,
+      "sortOrder": 22,
+      "repoUrl": "https://github.com/jahaanb7/J.A.R.V.I.S",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "",
+      "imageAlt": "",
+      "updatedAt": "2026-10-22",
+      "milestone": "Tool calling, approvals, calendar, memory and a phone companion page.",
+      "nextStep": "",
+      "evidence": [
+        "Unit tests with Vitest"
+      ],
+      "credits": [
+        "Ollama",
+        "Anthropic API"
+      ]
+    },
+    {
+      "id": "lorenz",
+      "title": "Lorenz attractor",
+      "question": "How can a simple system become unpredictable?",
+      "summary": "A Python notebook that integrates the Lorenz system and plots its attractor, with notes on chaos, phase space and the Van der Pol oscillator.",
+      "category": "Simulation",
+      "tags": [
+        "Python",
+        "Matplotlib",
+        "Dynamical systems"
+      ],
+      "status": "Archived",
+      "featured": false,
+      "sortOrder": 30,
+      "repoUrl": "https://github.com/jahaanb7/Lorenz-Attractor-Simulation",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "",
+      "imageAlt": "",
+      "updatedAt": "2025-12-27",
+      "milestone": "",
+      "nextStep": "",
+      "evidence": [],
+      "credits": []
+    },
+    {
+      "id": "ml-notebooks",
+      "title": "Machine learning notebooks",
+      "question": "What is a model actually doing when it learns?",
+      "summary": "Linear regression, the normal equation and logistic regression written with NumPy and pandas rather than a machine learning library.",
+      "category": "Machine learning",
+      "tags": [
+        "Python",
+        "NumPy",
+        "Jupyter"
+      ],
+      "status": "Archived",
+      "featured": false,
+      "sortOrder": 31,
+      "repoUrl": "https://github.com/jahaanb7/Machine-Learning-Models",
+      "demoUrl": "",
+      "caseStudyUrl": "",
+      "image": "",
+      "imageAlt": "",
+      "updatedAt": "2026-02-12",
+      "milestone": "",
+      "nextStep": "",
+      "evidence": [],
+      "credits": []
+    }
+  ],
+  "nextQuestions": [
+    "How cleanly can I pull a hydrogen-line peak out of noise with a cheap SDR?",
+    "Can I flag radio interference automatically before it ruins an observation?",
+    "Could ATLAS measure the Milky Way's rotation from Doppler-shifted hydrogen?",
+    "How do I fuse three IMUs and two barometers into one state estimate for Orion?",
+    "Which machine learning algorithms can I still implement from the maths up?"
+  ]
+}

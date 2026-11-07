@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rasterix: how does a triangle become a pixel? · Jahaan Bhavsar</title>
+  <meta name="description" content="Rasterix is a software rasterizer in Java: perspective projection, barycentric triangle fill, a depth buffer and textures, with no graphics library.">
+  <meta name="theme-color" content="#000000">
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Rasterix · Jahaan Bhavsar">
+  <meta property="og:description" content="How does a triangle become a pixel? A software rasterizer in Java.">
+  <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/bricolage-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="preload" href="../assets/fonts/newsreader-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="../js/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="navbar is-stuck" data-navbar>
+    <div class="wrap navbar-inner">
+      <a class="navbar-brand" href="../">Jahaan Bhavsar</a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav class="nav" id="site-nav" aria-label="Primary">
+        <ul>
+          <li><a href="../#investigations" aria-current="page"><span class="nav-no" aria-hidden="true">01</span>Investigations</a></li>
+          <li><a href="../#workbench"><span class="nav-no" aria-hidden="true">02</span>Workbench</a></li>
+          <li><a href="../#notebook"><span class="nav-no" aria-hidden="true">03</span>Scratchbook</a></li>
+          <li><a href="../#instruments"><span class="nav-no" aria-hidden="true">04</span>Tools</a></li>
+          <li><a href="../#writing"><span class="nav-no" aria-hidden="true">05</span>Writing</a></li>
+          <li><a class="nav-cta" href="../#contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme"><svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg><svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </div>
+  </div>
+
+  <main id="main">
+    <div class="wrap">
+      <p class="breadcrumb"><a href="../#rasterix">← Back to the scratchbook</a></p>
+
+      <header class="cs-hero">
+        <p class="label">Case study 01 · Graphics · Java</p>
+        <h1>Rasterix</h1>
+        <p class="question">How does a triangle become a pixel?</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/jahaanb7/Rasterix-Software-Rasterizer-">Source <span class="arrow" aria-hidden="true">↗</span></a>
+          <a class="btn" href="https://github.com/jahaanb7/Rasterix-Software-Rasterizer-/releases/tag/v1.3.0">Download v1.3.0 <span class="arrow" aria-hidden="true">↗</span></a>
+        </div>
+        <dl class="cs-facts">
+          <div><dt>Status</dt><dd><span class="status" data-status="Working prototype">Working prototype</span></dd></div>
+          <div><dt>Language</dt><dd>Java, about 1,500 lines</dd></div>
+          <div><dt>Releases</dt><dd>4, for macOS, Windows, Linux</dd></div>
+          <div><dt>Last release</dt><dd><time datetime="2026-01-28">January 28, 2026</time></dd></div>
+        </dl>
+      </header>
+
+      <figure class="cs-figure">
+        <div class="media-pair">
+          <img src="../assets/images/rasterix-wireframe.webp" width="720" height="720" alt="Wireframe render of a monkey head mesh in white lines on black, drawn by Rasterix.">
+          <img src="../assets/images/rasterix-textured.webp" width="720" height="720" alt="The same engine rendering a textured human head model.">
+        </div>
+        <figcaption>Two of Rasterix's render modes: wireframe (Bresenham lines) and textured triangles. Rendered on November 6, 2026 by calling the engine's own <code>render()</code> into an image, without a window.</figcaption>
+      </figure>
+
+      <section class="cs-section" aria-labelledby="overview">
+        <header><span class="label">Overview</span><h2 id="overview">What it is</h2></header>
+        <div>
+          <p>Every 3D game and film frame ends the same way: a list of triangles in space has to become a grid of coloured pixels. Graphics cards do this in hardware, which makes it easy to use and hard to see.</p>
+          <p>Rasterix does every step on the CPU in plain Java. It loads a model from an OBJ file, rotates it, projects it with a perspective matrix, decides which pixels each triangle covers, keeps only the nearest surface at each pixel, and shades it. Java's <code>BufferedImage</code> is only used to hold and show the finished pixels.</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="model">
+        <header><span class="label">Model</span><h2 id="model">The maths</h2></header>
+        <div>
+          <p>Two ideas carry most of the work.</p>
+          <p><strong>Perspective projection.</strong> A 4×4 matrix moves each vertex into clip space. Dividing by the fourth coordinate, <em>w</em>, makes distant things smaller. With field of view θ and f = 1 / tan(θ/2):</p>
+          <div class="equation" role="math" aria-label="Projection matrix">[ f/aspect   0        0                0            ]
+[ 0          f        0                0            ]
+[ 0          0       -(far+near)/(far-near)   -2·far·near/(far-near) ]
+[ 0          0       -1                0            ]</div>
+          <p><strong>Edge functions and barycentric weights.</strong> For a screen point p and a triangle edge from a to b, the edge function is the signed area of the parallelogram they span. Divide the three edge functions by the triangle's own area and you get weights w1, w2, w3 that are all non-negative exactly when p is inside the triangle. The same weights then interpolate depth, colour and texture coordinates.</p>
+          <div class="equation" role="math" aria-label="Edge function">E(a, b, p) = (b.x − a.x)(p.y − a.y) − (b.y − a.y)(p.x − a.x)
+w1 = E(v2, v3, p) / E(v1, v2, v3)   (and cyclically for w2, w3)</div>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="impl">
+        <header><span class="label">Implementation</span><h2 id="impl">How the code is laid out</h2></header>
+        <div>
+          <p>Each file maps to one stage of the pipeline:</p>
+          <ul class="limits">
+            <li><code>OBJLoader.java</code> reads vertices, faces and UVs.</li>
+            <li><code>Matrix.java</code>, <code>Vector3D/4D.java</code>, <code>Quaternion.java</code>: the linear algebra, written by hand.</li>
+            <li><code>camera.java</code> moves the world into camera space.</li>
+            <li><code>rasterizer.java</code> runs the pipeline per triangle: transform, normal, lighting, clipping against near and far planes, projection, perspective divide, screen mapping.</li>
+            <li><code>LineDrawer.java</code> does the pixel work: Bresenham lines, the barycentric fill, and textured fill.</li>
+            <li><code>DepthBuffer.java</code> stores the nearest depth seen at each pixel.</li>
+          </ul>
+          <p>The heart of the fill loop, from <code>LineDrawer.draw_triangle</code>:</p>
+<pre><code>for (int y = minY; y &lt;= maxY; y++) {
+  for (int x = minX; x &lt;= maxX; x++) {
+    Vector3D p = new Vector3D(x + 0.5, y + 0.5, 0);
+
+    //barycentric weights
+    double w1 = (edge_function(v2, v3, p))/area;
+    double w2 = (edge_function(v3, v1, p))/area;
+    double w3 = (edge_function(v1, v2, p))/area;
+
+    //point inside the triangle
+    if (w1 &gt;= 0 &amp;&amp; w2 &gt;= 0 &amp;&amp; w3 &gt;= 0) {
+      double z = w1 * v1.z + w2 * v2.z + w3 * v3.z;
+      Vector3D v = new Vector3D(x, y, z);
+      if (buffer.depthTest(v)) { ... }</code></pre>
+          <p class="src-ref">src/main/engine/LineDrawer.java, lines 134 to 152</p>
+          <figure>
+            <img src="../assets/images/rasterix-shaded.webp" width="720" height="720" loading="lazy" alt="The monkey mesh flat-shaded in grey by Rasterix, with darker faces turned away from the light.">
+            <figcaption>Flat shading: each triangle's brightness is the dot product of its surface normal and the light direction, from <code>rasterizer.render()</code>.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="decision">
+        <header><span class="label">Design decision</span><h2 id="decision">One comparison for occlusion</h2></header>
+        <div>
+          <p>The depth buffer starts every pixel at negative infinity and keeps a fragment only if its depth is larger than what is stored. After this projection matrix and the divide by <em>w</em>, larger values are nearer the camera, so "larger wins" means "nearest wins".</p>
+<pre><code>//closer to the camera than current depth, if so returns true
+if (z &gt; buffer[y][x]) {
+  buffer[y][x] = z;
+  return true;
+}</code></pre>
+          <p class="src-ref">src/main/engine/DepthBuffer.java, lines 27 to 31</p>
+          <p>That keeps the test to a single comparison per pixel, and it means triangles can be drawn in any order. While writing this page I checked the direction numerically: for a point straight ahead, projected depth falls from 0.83 at 1.5 units to 0.55 at 10 units, so the comparison is the right way round.</p>
+        </div>
+      </section>
+
+      <section class="cs-section" id="evidence" aria-labelledby="obs">
+        <header><span class="label">Observation</span><h2 id="obs">What I can show it does</h2></header>
+        <div>
+          <ul class="limits">
+            <li>All 16 classes compile with javac 25 (checked November 6, 2026).</li>
+            <li>The images on this page were produced by the engine's own render method, called without a window, on the Suzanne mesh (968 triangles) and a textured head (208,947 triangles).</li>
+            <li>GitHub Actions builds a Windows app on every push; the last run passed. Four releases ship builds for macOS, Windows and Linux.</li>
+            <li>The README describes 60 FPS. I have not measured frame times yet, so I do not quote a number here.</li>
+          </ul>
+          <figure>
+            <img src="../assets/images/rasterix-rabbit.webp" width="720" height="720" loading="lazy" alt="The Stanford bunny, about 69,000 triangles, flat shaded by Rasterix.">
+            <figcaption>The Stanford bunny (69,451 triangles), flat shaded.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="limits">
+        <header><span class="label">Limits and next question</span><h2 id="limits">What it does not do yet</h2></header>
+        <div>
+          <ul class="limits">
+            <li>Texture coordinates are interpolated linearly in screen space, not divided by <em>w</em>, so textures can warp on triangles seen at a steep angle. Perspective-correct interpolation is the next fix.</li>
+            <li>Everything runs on one CPU thread.</li>
+            <li>Triangles crossing the near plane are skipped rather than clipped.</li>
+          </ul>
+          <p><strong>Next question:</strong> how much faster does it get if I fill triangles in tiles and spread them across cores?</p>
+          <p>The rotating mesh on the <a href="../">homepage</a> is a separate, smaller study of the same pipeline written in JavaScript for the browser. The Java engine is not running there.</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="credits">
+        <header><span class="label">Credits</span><h2 id="credits">Models</h2></header>
+        <div>
+          <p>Suzanne from Blender; the Stanford bunny from the Stanford 3D Scanning Repository; other OBJ models in the repository's <code>resources/</code> folder.</p>
+        </div>
+      </section>
+
+      <nav class="pager" aria-label="Case studies">
+        <a href="../#rasterix">← Back to the scratchbook</a>
+        <a href="quantumsim.html">Next: QuantumSim →</a>
+      </nav>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div><p>© <span data-year>2026</span> Jahaan Bhavsar</p><p>Built by hand with HTML, CSS and JavaScript.</p></div>
+      <div><p class="label">Projects</p><ul><li><a href="rasterix.html">Rasterix</a></li><li><a href="quantumsim.html">QuantumSim</a></li><li><a href="fluid-simulation.html">Fluid simulation</a></li></ul></div>
+      <div><p class="label">Elsewhere</p><ul><li><a href="https://github.com/jahaanb7">GitHub</a></li></ul></div>
+    </div>
+  </footer>
+</body>
+</html>

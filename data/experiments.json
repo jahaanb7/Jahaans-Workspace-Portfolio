@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "about": "Pages of the experiment scratchbook. Title, question, status, tags and links come from data/projects.json (by projectId); this file holds the page content. Each experiment fills one two-page spread. layout picks the page composition (pasted, printout, flow, plot, equation; see style.css 'Scratchbook layouts'). sketch names an SVG in assets/sketches/ drawn beside the figure. openQuestion is an optional question printed on the page. Run `node tools/build-catalogue.mjs` after editing.",
+  "experiments": [
+    {
+      "projectId": "lorenz",
+      "tab": "Chaos",
+      "headline": "A little chaos",
+      "kicker": "Dynamical systems",
+      "figure": {
+        "type": "image",
+        "src": "assets/images/lorenz-attractor.webp",
+        "width": 407,
+        "height": 396,
+        "alt": "The Lorenz attractor plotted in three dimensions: two looping lobes traced by a single trajectory.",
+        "caption": "5,000 steps from (0.01, 0.01, 0.01), plotted with Matplotlib."
+      },
+      "equation": "ẋ = σ(y − x)   ẏ = x(ρ − z) − y   ż = xy − βz",
+      "explanation": "Three coupled equations with σ = 10, ρ = 28 and β = 8/3, stepped with forward Euler at dt = 0.01. The notebook also covers phase space and the Van der Pol oscillator.",
+      "observation": "The trajectory never repeats and never settles, yet it stays on the same two-lobed shape. Bounded but unpredictable was the idea I wanted to see.",
+      "note": "chaotic is not the same as random",
+      "tools": [
+        "Python",
+        "Matplotlib"
+      ],
+      "layout": "plot",
+      "openQuestion": "How quickly do two starting points 10⁻⁵ apart stop agreeing?",
+      "gallery": [
+        {
+          "src": "assets/images/lorenz-xz.webp",
+          "width": 919,
+          "height": 840,
+          "alt": "The Lorenz trajectory projected onto the x–z plane: two loops joined in a butterfly shape.",
+          "caption": "x against z"
+        },
+        {
+          "src": "assets/images/lorenz-split.webp",
+          "width": 1120,
+          "height": 520,
+          "alt": "x over time for two runs that start 0.00001 apart; the two curves match until about t = 14, then separate.",
+          "caption": "Two starts 10⁻⁵ apart part ways near t = 14"
+        }
+      ]
+    },
+    {
+      "projectId": "particle-simulation",
+      "tab": "Particles",
+      "headline": "Everything pulls on everything",
+      "kicker": "Numerical integration",
+      "figure": {
+        "type": "code",
+        "file": "ParticleSimulation/main.cpp",
+        "lang": "C++",
+        "code": "void VerletIntegration(Particle3D& particle, float deltaTime){\n  particle.position += particle.velocity * deltaTime\n                     + 0.5f * particle.acceleration * deltaTime * deltaTime;\n  glm::vec3 oldAcceleration = particle.acceleration;\n  particle.acceleration = glm::vec3(0.0f);\n  SetGravity(particle);\n  particle.velocity += 0.5f * (oldAcceleration + particle.acceleration) * deltaTime;\n}",
+        "caption": "Velocity Verlet, as written in the repository: the force is recomputed between the position and velocity half-steps."
+      },
+      "explanation": "Particles fall toward a point with an inverse-square pull (softened below a distance of 5 so nothing divides by zero), bounce off each other with elastic collisions, and stay inside a sphere. Rendered with OpenGL; released for macOS, Linux and Windows.",
+      "observation": "Velocity Verlet averages the old and new accelerations, so it needs the force evaluated twice per step. That ordering is the whole difference from the semi-implicit Euler loop in the fluid simulation.",
+      "note": "compare with the fluid sim's integrator",
+      "tools": [
+        "C++",
+        "OpenGL",
+        "GLM",
+        "CMake"
+      ],
+      "layout": "printout",
+      "sketch": "verlet",
+      "sketchCaption": "The three steps of one update, in the order the code runs them."
+    },
+    {
+      "projectId": "myelovar",
+      "tab": "Myelovar",
+      "headline": "Reading the quiet genome",
+      "kicker": "Computational biology · hackathon",
+      "figure": {
+        "type": "image",
+        "src": "assets/images/myelovar-funnel.webp",
+        "width": 1170,
+        "height": 546,
+        "alt": "Funnel chart from the Myelovar web interface showing how many variants survive each pipeline stage.",
+        "caption": "Stage-by-stage variant counts from the pipeline's own funnel view."
+      },
+      "explanation": "Seven stages, s0 to s6. Load the variants, drop common ones, keep those inside 18 ENCODE regulatory tracks from MM.1S myeloma cells, score transcription-factor motif disruption in a ±30 bp window, link each element to a target gene, weigh myeloma relevance with DepMap CRISPR data, then rank.",
+      "observation": "Most of the work was making each filter explainable. Every surviving variant carries a plain-English evidence chain, so a reader can see which stage kept it and why.",
+      "note": "research use only, not a diagnostic",
+      "tools": [
+        "Python",
+        "FastAPI",
+        "React",
+        "33 tests"
+      ],
+      "layout": "pasted",
+      "gallery": [
+        {
+          "src": "assets/images/myelovar-ui.webp",
+          "width": 1280,
+          "height": 650,
+          "alt": "The Myelovar review page: a variant funnel from 3,935,734 to 48,113 variants beside the Motif Ledger title, labelled illustrative sample data.",
+          "caption": "The review page, on sample data"
+        }
+      ]
+    },
+    {
+      "projectId": "buffy",
+      "tab": "Buffy",
+      "headline": "An assistant I can read",
+      "kicker": "Software · desktop assistant",
+      "figure": {
+        "type": "code",
+        "file": "src/core/permissions.ts",
+        "lang": "TypeScript",
+        "code": "const DEFAULT_RULES: Record<Scope, Decision> = {\n  read: 'allow',\n  local_write: 'allow',\n  destructive: 'ask',\n  external: 'ask',\n  system: 'ask',\n};\n\nsetRule(scope: Scope, decision: Decision): void {\n  if (scope === 'external' && decision === 'allow') {\n    throw new Error('External actions always require approval ...');\n  }\n  this.rules[scope] = decision;\n}",
+        "caption": "The permission policy. Anything that leaves the machine can never be set to run without approval."
+      },
+      "explanation": "An Electron and TypeScript assistant that can run a local model through Ollama or Claude through the API. Every tool is tagged with a scope; reads run freely, while file deletions, shell commands and anything external wait for a click. A pause switch denies every call until it is turned off.",
+      "observation": "Writing the policy as a small class with its own tests made the safety rule something I could check, rather than something I hoped the model would follow.",
+      "note": "",
+      "tools": [
+        "TypeScript",
+        "Electron",
+        "Vitest"
+      ],
+      "layout": "flow",
+      "sketch": "buffy-scopes",
+      "sketchCaption": "DEFAULT_RULES from the policy file, drawn as a flow.",
+      "gallery": [
+        {
+          "src": "assets/images/buffy-ui.webp",
+          "width": 1000,
+          "height": 425,
+          "alt": "Buffy’s Today view: a sidebar with Chat, Schedule, Tasks, Widgets, Approvals, Memory and Activity, a briefing card and a quick sticky note.",
+          "caption": "The Today view"
+        }
+      ]
+    },
+    {
+      "projectId": "ml-notebooks",
+      "tab": "Learning",
+      "headline": "Watching a model learn",
+      "kicker": "Machine learning",
+      "figure": {
+        "type": "image",
+        "src": "assets/images/ml-normal-equation.webp",
+        "width": 1264,
+        "height": 448,
+        "alt": "Three scatter plots of house price against square footage, bedrooms and bathrooms, with one predicted house highlighted in orange.",
+        "caption": "Normal-equation fit on house_prices.csv; the orange point is the prediction for 2,100 sq ft, 2 bedrooms, 2 bathrooms."
+      },
+      "equation": "θ = (XᵀX)⁻¹ Xᵀy",
+      "explanation": "Linear regression by gradient descent and by the normal equation, plus logistic regression, written with NumPy and pandas instead of a machine learning library.",
+      "observation": "The normal equation gives the answer in one line of linear algebra, which made it obvious what gradient descent is iterating toward.",
+      "note": "",
+      "tools": [
+        "Python",
+        "NumPy",
+        "pandas",
+        "Jupyter"
+      ],
+      "layout": "equation",
+      "gallery": [
+        {
+          "src": "assets/images/ml-linear-fit.webp",
+          "width": 543,
+          "height": 448,
+          "alt": "Scatter plot of scaled house price against square footage: actual prices in one shade, the model’s guesses in another along a rising band.",
+          "caption": "Guesses against prices, by size"
+        }
+      ]
+    }
+  ]
+}

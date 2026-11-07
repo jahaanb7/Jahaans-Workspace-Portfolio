@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fluid simulation: particles that act like water · Jahaan Bhavsar</title>
+  <meta name="description" content="A 3D smoothed particle hydrodynamics simulation in C++ and OpenGL: Poly6 density, Spiky pressure, viscosity, and a hashed spatial grid.">
+  <meta name="theme-color" content="#000000">
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Fluid simulation · Jahaan Bhavsar">
+  <meta property="og:description" content="How can a few thousand particles act like a fluid?">
+  <link rel="icon" href="../assets/images/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/bricolage-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="preload" href="../assets/fonts/newsreader-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="../js/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="navbar is-stuck" data-navbar>
+    <div class="wrap navbar-inner">
+      <a class="navbar-brand" href="../">Jahaan Bhavsar</a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav class="nav" id="site-nav" aria-label="Primary">
+        <ul>
+          <li><a href="../#investigations" aria-current="page"><span class="nav-no" aria-hidden="true">01</span>Investigations</a></li>
+          <li><a href="../#workbench"><span class="nav-no" aria-hidden="true">02</span>Workbench</a></li>
+          <li><a href="../#notebook"><span class="nav-no" aria-hidden="true">03</span>Scratchbook</a></li>
+          <li><a href="../#instruments"><span class="nav-no" aria-hidden="true">04</span>Tools</a></li>
+          <li><a href="../#writing"><span class="nav-no" aria-hidden="true">05</span>Writing</a></li>
+          <li><a class="nav-cta" href="../#contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme"><svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg><svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </div>
+  </div>
+
+  <main id="main">
+    <div class="wrap">
+      <p class="breadcrumb"><a href="../#fluid-simulation">← Back to the scratchbook</a></p>
+
+      <header class="cs-hero">
+        <p class="label">Case study 03 · Simulation · C++</p>
+        <h1>Fluid simulation</h1>
+        <p class="question">How can a few thousand particles act like a fluid?</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/jahaanb7/Fluid-Simulation">Source <span class="arrow" aria-hidden="true">↗</span></a>
+        </div>
+        <dl class="cs-facts">
+          <div><dt>Status</dt><dd><span class="status" data-status="Working prototype">Working prototype</span></dd></div>
+          <div><dt>Stack</dt><dd>C++17, OpenGL, GLFW, Dear ImGui, OpenMP</dd></div>
+          <div><dt>Particles</dt><dd>3,375 (a 15 × 15 × 15 block)</dd></div>
+          <div><dt>Last updated</dt><dd><time datetime="2026-04-24">April 24, 2026</time></dd></div>
+        </dl>
+      </header>
+
+      <figure class="cs-figure">
+        <div class="media-pair">
+          <img src="../assets/images/fluid-collapse.webp" width="1200" height="1200" alt="A block of blue particles collapsing and spreading inside a wireframe box, with sliders for target density, stiffness, viscosity and gravity in the corner.">
+          <img src="../assets/images/fluid-settled.webp" width="1200" height="1200" alt="The same particles a few seconds later, settled into a flat layer across the bottom of the box.">
+        </div>
+        <figcaption>Frames 90 and 320 of a run with the default settings: the block collapses, spreads, and settles. Captured from the running program on November 6, 2026 after building it locally with CMake.</figcaption>
+      </figure>
+
+      <section class="cs-section" aria-labelledby="overview">
+        <header><span class="label">Overview</span><h2 id="overview">What it is</h2></header>
+        <div>
+          <p>Water is continuous, but a computer can only track a finite number of things. Smoothed particle hydrodynamics (SPH) treats a fluid as a crowd of particles and asks each one: how crowded is it around me, and which way should that push me?</p>
+          <p>This simulation drops a block of particles into a box and lets SPH, gravity and the walls take over. Sliders change density, stiffness, viscosity and gravity while it runs, and clicking stirs the fluid.</p>
+          <p>I built it after watching Sebastian Lague's video on fluid simulation. The code here is my own C++ version, in 3D.</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="model">
+        <header><span class="label">Model</span><h2 id="model">The maths</h2></header>
+        <div>
+          <p>Every particle's influence is spread over a small radius <em>h</em> by a smoothing kernel W. Each step does three things, each with its own kernel:</p>
+          <ol class="limits">
+            <li><strong>Density</strong> from the Poly6 kernel, a smooth hill: ρᵢ = Σⱼ mⱼ W(rᵢⱼ, h).</li>
+            <li><strong>Pressure</strong> from how far density is above a target: pᵢ = k (ρᵢ − ρ₀). The force comes from the gradient of the Spiky kernel, which stays steep near the centre so close particles push apart hard.</li>
+            <li><strong>Viscosity</strong> from the Laplacian of a third kernel, nudging each particle's velocity toward its neighbours'.</li>
+          </ol>
+          <div class="equation" role="math" aria-label="Kernel normalisation constants">Poly6:      W(r)  = 315 / (64 π h⁹) · (h² − r²)³
+Spiky:     ∇W(r) = −45 / (π h⁶) · (h − r)² · r̂
+Viscosity: ∇²W(r) = 45 / (π h⁶) · (h − r)          for r &lt; h, else 0</div>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="impl">
+        <header><span class="label">Implementation</span><h2 id="impl">How the code is laid out</h2></header>
+        <div>
+          <ul class="limits">
+            <li><code>Fluid.h</code>: the kernels, density, pressure and force passes, parallelised with OpenMP.</li>
+            <li><code>SpatialGrid.h</code>: neighbour search.</li>
+            <li><code>Physics.h</code>: the time step, wall collisions, colouring by speed and drawing.</li>
+            <li><code>main.cpp</code>: window, camera, ImGui sliders, mouse stirring and impulses.</li>
+          </ul>
+          <p>The pressure and viscosity forces on particle i, summed over its neighbours:</p>
+<pre><code>// pressure force - symmetric formulation
+float pressure = (i1.pressure / (safeDensity_i * safeDensity_i))
+               + (j1.pressure / (safeDensity_j * safeDensity_j));
+pressureForce -= j1.mass * pressure * SpikyKernelGradient(r, dir);
+
+// viscosity force
+float lap = LaplacianKernel(r);
+viscosityForce += viscosity * (j1.mass / safeDensity_j)
+                * (j1.velocity - i1.velocity) * lap;</code></pre>
+          <p class="src-ref">src/library/Fluid.h, computeTotalForce()</p>
+          <p>The symmetric form adds pᵢ/ρᵢ² and pⱼ/ρⱼ², so the force i feels from j is equal and opposite to the force j feels from i. Without that, momentum leaks.</p>
+          <figure>
+            <img src="../assets/images/fluid-detail.webp" width="1400" height="765" loading="lazy" alt="Close view of the particle layer: thousands of shaded blue spheres, slightly piled up at the far wall.">
+            <figcaption>Frame 160, mid-spread. Colour encodes speed: deeper blue is slower.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="decision">
+        <header><span class="label">Design decision</span><h2 id="decision">A hashed grid the size of the kernel</h2></header>
+        <div>
+          <p>Checking every pair of 3,375 particles is about 5.7 million distance tests per step. But the kernels are zero beyond <em>h</em>, so only nearby particles matter.</p>
+          <p>The grid uses cells exactly <em>h</em> wide. Any neighbour within <em>h</em> must then be in the particle's own cell or one of the 26 around it. Cells are stored in a hash map keyed by multiplying the cell coordinates by three large primes and XOR-ing them, so the grid needs no fixed size.</p>
+<pre><code>// Hash the 3D coords to a single int value
+int hashCell(const glm::ivec3&amp; cell) {
+  return (cell.x * 73856093)^(cell.y * 19349663)^(cell.z * 83492791);
+}</code></pre>
+          <p class="src-ref">src/library/SpatialGrid.h, lines 28 to 31</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="obs">
+        <header><span class="label">Observation</span><h2 id="obs">What I can show it does</h2></header>
+        <div>
+          <ul class="limits">
+            <li>Builds with CMake on macOS and runs with 3,375 particles (checked November 6, 2026). The frames on this page come from that build.</li>
+            <li>With the defaults the block collapses, sloshes against the walls and settles into a layer, which is what a dam-break should do qualitatively.</li>
+            <li>The cross-platform GitHub Actions build is currently failing, so there is no download yet.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="limits">
+        <header><span class="label">Limits and next question</span><h2 id="limits">What I would fix next</h2></header>
+        <div>
+          <ul class="limits">
+            <li><strong>Integration.</strong> The main loop updates velocity, then position, with one force evaluation per frame: semi-implicit Euler. A <code>VerletIntegration</code> function exists in <code>Physics.h</code> but the loop does not call it. Switching to velocity Verlet, with forces recomputed between the two half-steps, is the obvious next experiment.</li>
+            <li><strong>Compressibility.</strong> Pressure is a linear function of density, so the fluid can compress noticeably. Stiffness and target density are tuned by eye.</li>
+            <li><strong>Visual, not quantitative.</strong> I have not yet measured density error or energy over time.</li>
+          </ul>
+          <p><strong>Next question:</strong> how far from the target density does the fluid drift, and does a stiffer equation of state or a smaller time step fix it?</p>
+        </div>
+      </section>
+
+      <section class="cs-section" aria-labelledby="credits">
+        <header><span class="label">Credits</span><h2 id="credits">Inspiration and libraries</h2></header>
+        <div><p>Inspired by Sebastian Lague's fluid simulation video. Kernels follow the standard forms from Müller, Charypar and Gross (2003). Built with GLFW, GLAD, Dear ImGui and GLM.</p></div>
+      </section>
+
+      <nav class="pager" aria-label="Case studies">
+        <a href="quantumsim.html">← QuantumSim</a>
+        <a href="../#workbench">Next: the workbench →</a>
+      </nav>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div><p>© <span data-year>2026</span> Jahaan Bhavsar</p><p>Built by hand with HTML, CSS and JavaScript.</p></div>
+      <div><p class="label">Projects</p><ul><li><a href="rasterix.html">Rasterix</a></li><li><a href="quantumsim.html">QuantumSim</a></li><li><a href="fluid-simulation.html">Fluid simulation</a></li></ul></div>
+      <div><p class="label">Elsewhere</p><ul><li><a href="https://github.com/jahaanb7">GitHub</a></li></ul></div>
+    </div>
+  </footer>
+</body>
+</html>
