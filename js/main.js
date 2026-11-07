@@ -51,6 +51,12 @@ safe('collage', () => initCollage([
   { root: document.querySelector('[data-qs-board]'), items: '.qs-item' },
 ].filter((g) => g.root)));
 
+// QuantumSim orbital: sampled and drawn live once the print is close to the viewport.
+const orbital = document.querySelector('[data-orbital-sim]');
+if (orbital) whenNear(orbital, () => {
+  import('./orbital.js').then((m) => m.initOrbital(orbital)).catch((err) => console.warn('orbital unavailable', err));
+});
+
 // Workbench: line studies draw themselves in, notes get a red underline, the sand plate runs
 // only while its tab is open and on screen.
 const bench = document.getElementById('workbench');

@@ -420,6 +420,8 @@ sub { line-height: 0; }
 .scrap-orbital { transform: rotate(var(--r, -0.8deg)); margin: 0; }
 .qs-note { margin: -0.2rem 0 0 auto; max-width: 16ch; color: var(--pencil); font-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.6rem); line-height: 1; transform: rotate(-3deg); }
 .qs-col .slip { margin: 0; }
+.qs-explain { margin: 0; max-width: 46ch; font-size: 0.98rem; line-height: 1.5; color: var(--ink-2); }
+.qs-explain .mono { font-size: 0.8em; text-transform: none; color: var(--ink); }
 .qs-collage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(1rem, 2.6vw, 2rem) clamp(1rem, 2.6vw, 2.2rem); align-items: start; }
 .qs-polaroid { padding: 10px 10px 0; }
 .qs-polaroid:nth-child(even) { margin-top: 1.8rem; }
@@ -435,6 +437,29 @@ sub { line-height: 0; }
 .qs-strip { grid-column: 1 / -1; padding-top: 1.4rem; }
 .qs-strip::before { left: 50%; margin-left: -35px; }
 .qs-strip .ras-math { margin-top: -2.6rem; }
+/* live orbital print: navy ink dots on the same cream paper */
+.qs-orbit-frame {
+  position: relative; aspect-ratio: 16 / 10; background-color: #ECEAE3;
+  background-image: radial-gradient(rgba(27, 58, 87, 0.13) 1px, transparent 1px); background-size: 18px 18px; background-position: center;
+}
+.qs-orbit-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: pan-y; }
+.qs-orbit.is-dragging canvas { cursor: grabbing; }
+.qs-orbit-frame canvas:focus-visible { outline: 2px solid #4A6E8D; outline-offset: -2px; }
+.qs-orbit-hint { position: absolute; left: 0.8rem; bottom: 0.4rem; margin: 0; font-size: 1.15rem; color: #4A6E8D; transform: rotate(-3deg); pointer-events: none; transition: opacity var(--dur-base) var(--ease-out); }
+.qs-orbit:not(.is-live) .qs-orbit-hint, .qs-orbit.is-dragging .qs-orbit-hint { opacity: 0; }
+.qs-orbit-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.6rem; }
+.qs-orbit-picks { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.qs-orbit-bar button {
+  min-height: 32px; min-width: 44px; padding: 0.25rem 0.6rem; border: 1px solid #C9D3DD; border-radius: 3px; background: transparent; color: #1B3A57;
+  font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.04em; cursor: pointer; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.qs-orbit-bar button:hover:not([aria-pressed='true']) { background: rgba(27, 58, 87, 0.07); }
+.qs-orbit-picks button[aria-pressed='true'] { background: #1B3A57; border-color: #1B3A57; color: #F0F0F0; }
+.qs-orbit-bar button:focus-visible { outline: 2px solid #4A6E8D; outline-offset: 2px; }
+.qs-orbit-pause { color: #4A6E8D; }
+.qs-orbit figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.3rem 1rem; }
+.qs-orbit figcaption [data-orbital-readout] { color: #1B3A57; }
+@media (hover: hover) and (pointer: fine) { .qs-orbit:hover { transform: rotate(0deg); } } /* no lift while turning it */
 @media (max-width: 900px) {
   .qs-board { grid-template-columns: minmax(0, 1fr); }
   .qs-col { position: static; }

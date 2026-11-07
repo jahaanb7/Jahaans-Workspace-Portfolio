@@ -11,7 +11,7 @@
 //   - a sparse field of arrows showing ∇u (direction and relative size),
 //   - tracers that move along the level sets (velocity = ∇u rotated 90°, so u stays constant),
 //   - ruler ticks on the left and bottom edges,
-//   - a probe at the pointer (or riding a tracer) that reads out u, |∇u| and the current mode.
+//   - a probe at the pointer (or riding a tracer) that reads out u.
 //
 // Marching squares on a coarse grid at about 20 fps. It pauses in hidden tabs and draws one still
 // frame with reduced motion.
@@ -189,15 +189,13 @@ export function initBackdrop() {
     let px = ptr.tx, py = ptr.ty;
     if (!ptr.on) { const p = tr.find((q) => q.pts.length > 6 && q.x > 120 && q.x < w - 260 && q.y > 120 && q.y < h - 80); if (p) { px = p.x; py = p.y; } else px = -1; }
     if (px > 0) {
-      const { u, ux, uy } = sample(px, py);
+      const { u } = sample(px, py);
       ctx.globalAlpha = 0.55; ctx.strokeStyle = accent; ctx.beginPath();
       ctx.moveTo(px - 9, py); ctx.lineTo(px - 3, py); ctx.moveTo(px + 3, py); ctx.lineTo(px + 9, py);
       ctx.moveTo(px, py - 9); ctx.lineTo(px, py - 3); ctx.moveTo(px, py + 3); ctx.lineTo(px, py + 9);
       ctx.stroke();
       ctx.globalAlpha = 0.5; ctx.fillStyle = ink; ctx.font = `10px ${mono}`;
-      const g = Math.hypot(ux, uy) * STEP;
-      const lines = [`u = ${u >= 0 ? ' ' : ''}${u.toFixed(3)}`, `|∇u| = ${g.toFixed(3)}`, `(${mode.n1},${mode.m1}) → (${mode.n2},${mode.m2})  ${Math.round(mode.f * 100)}%`];
-      lines.forEach((s, k) => ctx.fillText(s, px + 14, py + 14 + k * 13));
+      ctx.fillText(`u = ${u >= 0 ? ' ' : ''}${u.toFixed(3)}`, px + 14, py + 14);
     }
     ctx.globalAlpha = 1;
   }

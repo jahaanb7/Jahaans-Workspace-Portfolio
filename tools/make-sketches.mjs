@@ -171,6 +171,13 @@ const label = (x, y, t, cls = 'sk-label', anchor = 'start') => `<text class="${c
     const r = at[k];
     out.push(label(X0 + r * XS + (k === '2p' ? -34 : 10), Y0 - f(r) * YS - 8, k, `sk-label ${k === '2s' ? 'sk-blue-t' : k === '2p' ? 'sk-red-t' : ''}`));
   }
+  for (const p of [0.2, 0.4, 0.6]) {
+    add(g.line(X0 - 6, Y0 - p * YS, X0, Y0 - p * YS, { strokeWidth: 0.8, roughness: 0.3 }), 'sk sk-light');
+    out.push(label(X0 - 9, Y0 - p * YS + 4, String(p), 'sk-num', 'end'));
+  }
+  // axis titles: what each direction means, in words
+  out.push(`<text class="sk-num" x="0" y="0" text-anchor="middle" transform="translate(12 ${Y0 - 0.31 * YS}) rotate(-90)">P(r): chance per unit radius</text>`);
+  out.push(label(X0 + 7 * XS, Y0 + 44, 'r: distance from the nucleus, in Bohr radii (a₀)', 'sk-num', 'middle'));
   out.push(label(X0 + 14.4 * XS, Y0 - 10, 'r / a₀', 'sk-label', 'end'));
   out.push(label(X0 + 200, Y0 - 0.62 * YS + 20, 'P(r) = r²|R(r)|²'));
   svg('orbital-radial', W, H, 'Radial probability of the hydrogen 1s, 2s and 2p states',
