@@ -1,68 +1,29 @@
-// orbital.js: a live hydrogen orbital, sampled from |ψ|² and drawn as ink dots on a print.
-// Same recipe as QuantumSim's orbitals.js: invert the radial CDF of r²|R(r)|², then
-// rejection-sample the angular part. Drag to turn; it spins slowly on its own otherwise.
+// orbital.js: draws a hydrogen orbital from QuantumSim as ink dots on a print.
+// The physics is QuantumSim's own src/physics/orbitals.js, copied unchanged into
+// js/quantumsim/ by tools/sync-quantumsim.mjs (commit pinned in js/quantumsim/SOURCE.json).
+// This file only handles the canvas: projection, ink, drag, morph.
+
+import { sampleCloud, orbitalLabel } from './quantumsim/orbitals.js';
 
 const N = 14000;
 const INK_POS = '27, 58, 87';     // #1B3A57 navy: ψ > 0
 const INK_NEG = '106, 150, 186';  // a sky-steel tint: ψ < 0
 
+// (n, l, m) for each button; m follows QuantumSim's real-harmonic convention.
 const ORBITALS = {
-  '1s':  { n: 1, l: 0, label: '1s',  ang: () => 1 },
-  '2pz': { n: 2, l: 1, label: '2p<sub>z</sub>', ang: (x, y, z) => z },
-  '3dz2': { n: 3, l: 2, label: '3d<sub>z²</sub>', ang: (x, y, z) => 3 * z * z - 1 },
-  '3dxy': { n: 3, l: 2, label: '3d<sub>xy</sub>', ang: (x, y) => 2 * x * y },
-  '4fz3': { n: 4, l: 3, label: '4f<sub>z³</sub>', ang: (x, y, z) => z * (5 * z * z - 3) },
+  '1s':   { n: 1, l: 0, m: 0 },
+  '2pz':  { n: 2, l: 1, m: 0 },
+  '3dz2': { n: 3, l: 2, m: 0 },
+  '3dxy': { n: 3, l: 2, m: -2 },
+  '4fz3': { n: 4, l: 3, m: 0 },
 };
 
-function laguerre(k, a, x) {
-  if (k === 0) return 1;
-  let p0 = 1, p1 = 1 + a - x;
-  for (let i = 1; i < k; i++) {
-    const p2 = ((2 * i + 1 + a - x) * p1 - (i + a) * p0) / (i + 1);
-    p0 = p1; p1 = p2;
-  }
-  return p1;
-}
+// QuantumSim labels look like "3d_z²"; render the suffix as a subscript.
+const htmlLabel = ({ n, l, m }) => orbitalLabel(n, l, m).replace(/_(.+)$/, '<sub>$1</sub>');
 
-function sample({ n, l, ang }) {
-  // radial CDF on a fine grid, a0 = 1, Z = 1
-  const rMax = 6 * n * n + 12, bins = 4000, dr = rMax / bins;
-  const cdf = new Float64Array(bins + 1);
-  const lag = (r) => laguerre(n - l - 1, 2 * l + 1, (2 * r) / n);
-  for (let i = 1; i <= bins; i++) {
-    const r = i * dr, rho = (2 * r) / n, L = lag(r);
-    cdf[i] = cdf[i - 1] + r * r * rho ** (2 * l) * Math.exp(-rho) * L * L * dr;
-  }
-  const total = cdf[bins];
-  for (let i = 1; i <= bins; i++) cdf[i] /= total;
-  const invert = (u) => {
-    let lo = 0, hi = bins;
-    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cdf[mid] < u) lo = mid; else hi = mid; }
-    return (lo + (u - cdf[lo]) / Math.max(cdf[hi] - cdf[lo], 1e-12)) * dr;
-  };
-
-  // max of the angular density, for rejection
-  let aMax = 0;
-  for (let i = 0; i < 4000; i++) {
-    const z = Math.random() * 2 - 1, p = Math.random() * Math.PI * 2, s = Math.sqrt(1 - z * z);
-    aMax = Math.max(aMax, ang(s * Math.cos(p), s * Math.sin(p), z) ** 2);
-  }
-  aMax *= 1.05;
-
-  const pos = new Float32Array(N * 3), sign = new Int8Array(N);
-  for (let i = 0; i < N; i++) {
-    let x, y, z, a;
-    do {
-      z = Math.random() * 2 - 1;
-      const p = Math.random() * Math.PI * 2, s = Math.sqrt(1 - z * z);
-      x = s * Math.cos(p); y = s * Math.sin(p);
-      a = ang(x, y, z);
-    } while (Math.random() * aMax > a * a);
-    const r = invert(Math.random());
-    pos[i * 3] = x * r; pos[i * 3 + 1] = y * r; pos[i * 3 + 2] = z * r;
-    sign[i] = Math.sign(a) * Math.sign(lag(r)) >= 0 ? 1 : -1;
-  }
-  return { pos, sign, extent: invert(0.985), mean: (3 * n * n - l * (l + 1)) / 2 };
+function sample(o) {
+  const c = sampleCloud({ ...o, zEff: 1, count: N, seed: 1 + o.n * 16 + o.l * 4 + (o.m + 3) });
+  return { pos: c.positions, sign: c.signs, extent: c.extent, mean: c.mean };
 }
 
 export function initOrbital(root) {
@@ -95,8 +56,8 @@ export function initOrbital(root) {
     cur = next; t0 = performance.now(); morph = from && !reduce ? 0 : 1;
     if (morph === 1) { shown.set(cur.pos); extent = cur.extent; }
     buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.orbital === key)));
-    const name = o.label.replace(/<\/?sub>/g, '');
-    readout.innerHTML = `${o.label} · n=${o.n} l=${o.l} · ⟨r⟩ = ${+cur.mean.toFixed(1)} a₀`;
+    const label = htmlLabel(o), name = orbitalLabel(o.n, o.l, o.m).replace('_', ' ');
+    readout.innerHTML = `${label} · n=${o.n} l=${o.l} · ⟨r⟩ = ${+cur.mean.toFixed(1)} a₀`;
     canvas.setAttribute('aria-label', `${name} orbital drawn as ${N.toLocaleString()} points sampled from |ψ|², dark where ψ is positive and light where it is negative. Mean radius ${+cur.mean.toFixed(1)} Bohr radii.`);
     dirty = true;
   };

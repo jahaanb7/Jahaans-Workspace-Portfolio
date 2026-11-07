@@ -1,0 +1,8 @@
+{
+  "repo": "https://github.com/jahaanb7/QuantumSim",
+  "commit": "7e85e3a30cd3790bd9d9e92d7565066eda765d2b",
+  "message": "Refine learning experience and prepare GitHub Pages",
+  "files": {
+    "js/quantumsim/orbitals.js": "src/physics/orbitals.js"
+  }
+}

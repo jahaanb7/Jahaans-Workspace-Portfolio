@@ -24,6 +24,8 @@ js/pipeline.js              Rasterix pipeline stages; fluid frame slider and con
 js/notebook.js              Scratchbook: own page-turn engine (spreads / top-bound pad), contents, list view, keys, drag, swipe.
 js/workbench.js             Workbench cards: line studies plot in, note underlines, the Chladni sand simulation.
 js/fan.js                   The Rasterix print pile.
+js/orbital.js               QuantumSim orbital explorer: canvas drawing only, physics from js/quantumsim/.
+js/quantumsim/orbitals.js   Unmodified copy of QuantumSim's src/physics/orbitals.js (commit in SOURCE.json). Do not edit.
 js/motion.js                Scroll motion for tablets and desktops (GSAP + ScrollTrigger).
 projects/*.html             Case studies for the three featured projects.
 data/projects.json          Project facts: title, question, status, milestone, next step, links.
@@ -33,6 +35,7 @@ data/notes.json             Published writing.
 assets/drawings/*.svg       Drawing sheets, inlined into index.html by the catalogue script.
 assets/sketches/*.svg       Rough.js sketches and computed Chladni lines, inlined the same way.
 assets/vendor/              GSAP 3.12.5, ScrollTrigger, Rough Notation 0.5.1 (with licences).
+tools/sync-quantumsim.mjs   Re-copies orbitals.js from github.com/jahaanb7/QuantumSim (--check to verify).
 tools/build-catalogue.mjs   Writes status slips, drawings, notebook, skills and writing into index.html.
 tools/stl_to_drawing.py     Projects STL meshes to visible and hidden edges (needs numpy).
 tools/make_orion_sheet.py   Builds assets/drawings/orion-airframe.svg from that projection.
