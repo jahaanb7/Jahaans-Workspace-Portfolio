@@ -742,11 +742,6 @@ input[type='range'] { width: 100%; accent-color: var(--plate-blue); min-height: 
 @media (max-width: 760px) { .writing-grid, .clippings { grid-template-columns: minmax(0, 1fr); } .clip-2 { margin-top: 0; } }
 
 /* ---------- About ---------- */
-.about { padding-bottom: var(--sec-space); }
-.about-card { max-width: 46rem; }
-.about-card h2 { font-size: var(--step-3); margin-bottom: 0.6rem; }
-.about-card p { font-size: var(--step-1); }
-.signature { font-size: 2rem; transform: rotate(-3deg); transform-origin: left; display: inline-block; margin-top: 0.6rem; }
 
 /* ---------- footer ---------- */
 .site-footer { border-top: 1.5px solid var(--ink); padding-block: 1.5rem 2.5rem; font-size: 0.85rem; color: var(--ink-2); }
@@ -914,7 +909,7 @@ a { color: inherit; }
 
 .nb-stage { outline: none; padding: 0 0 1.2rem; }
 .nb-stage:focus-visible .nb-book { outline: 2px solid var(--strong); outline-offset: 10px; }
-.nb-book { position: relative; margin-inline: auto; height: var(--page-h, 520px); touch-action: pan-y; perspective: 2400px; perspective-origin: 50% 40%; }
+.nb-book { position: relative; margin-inline: auto; height: var(--page-h, 520px); touch-action: pan-y; }
 .nb-book.is-spread { width: calc(var(--page-w, 560px) * 2); }
 .nb-book.is-pad { width: var(--page-w, 100%); max-width: 100%; }
 /* the cover board and the stacked page edges under the open spread */
@@ -987,25 +982,18 @@ a { color: inherit; }
 .nb-page .xp-note { justify-self: end; margin: 0 6% 0 0; max-width: 18ch; color: var(--nb-pencil); font-size: clamp(1.2rem, 1rem + 0.6vw, 1.6rem); line-height: 1; transform: rotate(-3deg); }
 .nb-page .xp-obs, .nb-page .xp-openq { display: none; }
 
-/* the turning leaf */
-.nb-leaf { position: absolute; top: 0; height: 100%; transform-style: preserve-3d; z-index: 5; will-change: transform; }
-.nb-leaf.is-spine { left: var(--page-w); width: var(--page-w); transform-origin: left center; }
-.nb-leaf.is-side { left: 0; width: 100%; transform-origin: left center; }
-.nb-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--nb-paper) var(--grain); overflow: hidden; }
-.nb-face-back { transform: rotateY(180deg); }
-.is-side .nb-face-back { background: var(--nb-paper-2); }
-.nb-face.is-empty { background: var(--nb-paper-2); }
-.nb-face::after { /* light falls off as the page rises */
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.05) 40%, rgba(255, 255, 255, 0.12) 75%, transparent);
-  opacity: calc(var(--a, 0) * 1.1);
-}
-.nb-face-back::after { background: linear-gradient(270deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.04) 45%, transparent); opacity: calc((1 - var(--a, 0)) * 1.1); }
-/* the shadow the leaf casts on the page beneath it */
-.nb-shade { display: block; position: absolute; top: 0; bottom: 0; z-index: 4; pointer-events: none; width: var(--page-w); left: var(--page-w);
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 70%); opacity: calc(var(--lift, 0) * 0.85); transform-origin: left center; transform: scaleX(calc(1 - var(--a, 0))); }
-.is-pad .nb-shade { left: 0; width: 100%; }
-.nb-shade[hidden] { display: none; }
+/* the turning leaf: flat paper folded from a corner (js/notebook.js). Only transform and
+   clip-path change while it turns, so the browser just recomposites two page layers. */
+.nb-leaf { position: absolute; top: 0; height: 100%; z-index: 5; pointer-events: none; }
+.nb-leaf[hidden] { display: none; }
+.nb-leaf.is-spine { left: var(--page-w); width: var(--page-w); }
+.nb-leaf.is-side { left: 0; width: 100%; }
+.nb-face { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background: var(--nb-paper) var(--grain); will-change: clip-path; }
+.nb-face-back { transform-origin: 0 0; will-change: transform, clip-path; }
+.nb-face.is-empty, .is-side .nb-face-back { background: var(--nb-paper-2) var(--grain); }
+.nb-face .nb-page::after, .is-turning .nb-page::after { display: none; } /* no dog-ears while a sheet is lifted */
+.nb-fold-under, .nb-fold-light { position: absolute; inset: 0; pointer-events: none; }
+.nb-fold-light { z-index: 2; }
 
 /* footer: page counter left, turning controls right */
 .nb-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem 1.2rem; margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
@@ -1121,27 +1109,6 @@ a { color: inherit; }
 @media (max-width: 900px) { .ras-tag { font-size: 0.9rem; padding: 0.35rem 0.6rem; } .ras-tagwrap { margin-top: -1.3rem; } }
 @media (prefers-reduced-motion: reduce) { .ras-detail, .ras-tagwrap .ras-math { transition: none; } }
 .ras-ledger { align-content: start; padding-top: 0.6rem; }
-
-/* the curling leaf: a chain of hinged strips (js/notebook.js) */
-.nb-leaf.is-curling > .nb-face { visibility: hidden; }
-.nb-curl { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
-.nb-strip { position: absolute; top: 0; height: 100%; transform-origin: left center; transform-style: preserve-3d; will-change: transform; }
-.nb-sface { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--nb-paper) var(--grain); }
-.nb-sface-b { transform: rotateY(180deg); background-color: var(--nb-paper-2); }
-.nb-sface.is-empty { background-color: var(--nb-paper-2); }
-.nb-slice-in { position: absolute; top: 0; left: 0; }
-.nb-slice-in > .nb-page { box-shadow: none !important; border-radius: 0 !important; }
-.nb-slice-in > .nb-page::after { display: none; }
-.nb-sface::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: #000; opacity: calc(var(--sh, 0) * 0.3); }
-.nb-sface-f::before { /* a soft highlight where the curl catches the light */
-  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22)); opacity: calc((1 - var(--sh, 0)) * var(--lift, 0));
-}
-.nb-book { perspective: 3600px; }
-/* perspective lives on the strips' own container, so no 3D context has to survive the chain */
-.nb-curl { perspective: 3600px; perspective-origin: 0 40%; transform-style: flat; }
-.is-side .nb-curl { perspective-origin: 50% 40%; }
-.nb-strip { transform-style: flat; }
 
 /* right page as a collage: two or three taped prints, overlapping a little */
 .nb-page .xp-b > :is(.xp-fig, .xp-code, .xp-sketch) ~ :is(.xp-fig, .xp-code, .xp-sketch) { display: block; }

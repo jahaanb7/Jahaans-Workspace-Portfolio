@@ -6,23 +6,20 @@
 // content in the document; switching to the reading view puts every node back.
 //
 // One landscape spread per experiment: words on the left page, the taped figure on the right.
-// The page turn is this file's own leaf engine; its timing is a Motion (motion.dev) spring
-// when the vendored library is available, and a cubic ease when it is not:
-//   wide stage (>= SPREAD_MIN)  two-page spreads; a leaf lifts, bends and turns about the spine
-//   narrow stage                a landscape notepad; the sheet turns over its left edge
+// The page turn is this file's own leaf engine: a corner fold (flat paper folded along the
+// perpendicular bisector of the corner and where it is pulled to, the technique behind
+// turn.js and StPageFlip), drawn with one transform and clip-paths on the real page nodes:
+//   wide stage (>= SPREAD_MIN)  two-page spreads; the right leaf peels from its corner over the spine
+//   narrow stage                a landscape notepad; the sheet folds away over its left edge
 //   reduced motion              pages change instantly, every control stays
 // A short page-flip sound (Kenney, CC0) plays on each turn; the speaker button mutes it.
 // The leaf can be dragged: from a page corner with a mouse, or with a horizontal swipe on
 // touch. Vertical scrolling and text selection keep working (touch-action: pan-y, and mouse
 // drags only start in the corners). Pages that are not visible are inert.
 
-const TURN_MS = 1500; // fallback turn length when Motion is unavailable
-const STRIPS = 22; // the turning leaf is drawn as a chain of hinged strips, so it can curl
-const CURL = 70; // degrees of bend at the middle of a turn, spread toward the free edge
+const TURN_MS = 900; // length of a turn started by a button, key or tab
 const SPREAD_MIN = 820; // stage width (px) from which two-page spreads are shown
 const EDGE = 0.34; // a mouse drag can start in the outer third of either page
-
-const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 export function initNotebook(section) {
   const shell = section.querySelector('[data-notebook]');
@@ -75,15 +72,6 @@ export function initNotebook(section) {
   }
   soundBtn?.addEventListener('click', () => { setSound(!soundOn); if (soundOn) playFlip(); });
   setSound(soundOn);
-
-  /* ---------- Motion (motion.dev), loaded on demand ---------- */
-  let motion = window.Motion || null;
-  if (!motion) {
-    const sc = document.createElement('script');
-    sc.src = new URL('../assets/vendor/motion-11.11.17.js', import.meta.url).href;
-    sc.onload = () => { motion = window.Motion || null; };
-    document.head.append(sc);
-  }
 
   let pages = [];
   let borrowed = [];
@@ -172,7 +160,10 @@ export function initNotebook(section) {
   leaf.setAttribute('aria-hidden', 'true');
   const slotL = el('div', 'nb-slot nb-slot-l');
   const slotR = el('div', 'nb-slot nb-slot-r');
-  const shade = el('div', 'nb-shade');
+  const under = el('div', 'nb-fold-under'); // the shadow in the crease, on the page being uncovered
+  const shadeA = el('div', 'nb-fold-light');
+  const shadeB = el('div', 'nb-fold-light');
+  leaf.prepend(under);
 
   function place(v) {
     pages.forEach((p) => { p.hidden = true; });
@@ -243,13 +234,18 @@ export function initNotebook(section) {
     }
   }
 
-  /* ---------- the turn ---------- */
-  // A turn is described by the pages under the leaf and on its two faces, and by the
-  // direction. setProgress(p) poses the leaf for p in [0, 1].
+  /* ---------- the turn ----------
+     The turning sheet is always the right-hand leaf: its front is a right page, its back the
+     left page of the next spread. A backward turn is the same leaf being laid back down.
+     The sheet is flat paper folded along one line, the way a real page peels from a corner:
+     the corner C is pulled to a point P, the fold is the perpendicular bisector of C and P,
+     the front is clipped to the spine side of the fold and the back is the cut-off flap
+     reflected across it. Two real page nodes, one transform and two clip-paths per frame:
+     no clones, no strips, no seams. Coordinates: origin at the top of the spine, x toward the
+     outer edge, y down; the leaf element sits exactly there. */
   function prepareTurn(from, to) {
     const fv = spreadOf(from), tv = spreadOf(to);
     const fwd = tv[0] > fv[0];
-    const t = { fwd, tv, spread };
     pages.forEach((p) => { p.hidden = true; });
     slotL.textContent = '';
     slotR.textContent = '';
@@ -264,143 +260,163 @@ export function initNotebook(section) {
         show(leftOf(tv), slotL); show(rightOf(fv), slotR);
         show(rightOf(tv), faceA); show(leftOf(fv), faceB);
       }
-      bookEl.classList.toggle('is-closed', false);
-      bookEl.classList.toggle('is-closed-back', false);
-      faceA.classList.toggle('is-empty', !faceA.firstChild);
-      faceB.classList.toggle('is-empty', !faceB.firstChild);
     } else {
-      // pad: the current sheet lifts up and away (forward), or the previous one comes down
+      // pad: the current sheet folds away over its left edge (forward), or the previous one comes back
       show(fwd ? tv[0] : fv[0], slotR);
       show(fwd ? fv[0] : tv[0], faceA);
-      faceB.classList.add('is-empty');
-      faceA.classList.remove('is-empty');
     }
+    faceA.classList.toggle('is-empty', !faceA.firstChild);
+    faceB.classList.toggle('is-empty', !faceB.firstChild);
+    faceA.append(shadeA);
+    faceB.append(shadeB);
     leaf.className = `nb-leaf ${spread ? 'is-spine' : 'is-side'}`;
-    bookEl.append(leaf, shade);
+    bookEl.append(leaf);
     leaf.hidden = false;
-    shade.hidden = false;
-    buildStrips(t);
+    const w = leaf.offsetWidth, h = leaf.offsetHeight;
+    const t = { fwd, tv, spread, w, h, top: false, P: null };
+    setP(t, fwd ? w : -w, h); // flat where it starts
     return t;
   }
 
-  /* ---------- the curling leaf ----------
-     The real page nodes sit (hidden) on faceA/faceB. For the turn, each strip shows a slice of a
-     copy of the front page and, on its back, the matching slice of the back page. Each strip
-     hinges on the far edge of the one before it: small extra angles add up to a smooth curl.
-     Strips are siblings placed in 3D by this code (WebKit flattens deep nested 3D chains), and
-     each is shaded, and shows its front or back, by its own angle to the viewer. */
-  const curlEl = el('div', 'nb-curl');
-  let strips = [];
-  function sliceOf(src, offset, w, h) {
-    const box = el('div', 'nb-slice-in');
-    box.style.cssText = `width:${w}px;height:${h}px;transform:translateX(${-offset}px)`;
-    if (src.firstChild) {
-      const c = src.firstChild.cloneNode(true);
-      c.hidden = false;
-      c.removeAttribute('id');
-      c.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
-      box.append(c);
+  // where the corner is when the sheet is flat (a = 0) or turned over (a = 1)
+  const rest = (t, a) => [a ? -t.w : t.w, t.top ? 0 : t.h];
+  // the corner's path for a turn: it sweeps over the spine and lifts a little on the way
+  function arc(t, a) {
+    const lift = t.h * 0.2 * Math.sin(Math.PI * a);
+    return [t.w * Math.cos(Math.PI * a), t.top ? lift : t.h - lift];
+  }
+  // how far over a corner position is: 0 flat, 1 turned
+  const aOf = (t, x) => Math.acos(Math.max(-1, Math.min(1, x / t.w))) / Math.PI;
+
+  // Paper does not stretch: the corner stays within a page width of the spine end on its own
+  // edge, and within a diagonal of the other end.
+  function constrain(t, x, y) {
+    const { w, h } = t;
+    const ay = t.top ? 0 : h, by = t.top ? h : 0, diag = Math.hypot(w, h);
+    let d = Math.hypot(x, y - ay);
+    if (d > w) { x *= w / d; y = ay + (y - ay) * (w / d); }
+    d = Math.hypot(x, y - by);
+    if (d > diag) { x *= diag / d; y = by + (y - by) * (diag / d); }
+    return [x, y];
+  }
+
+  // the part of polygon `pts` on the side s·((q − m)·n) ≤ 0
+  function clipHalf(pts, nx, ny, mx, my, s) {
+    const out = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length];
+      const fp = s * ((p[0] - mx) * nx + (p[1] - my) * ny);
+      const fq = s * ((q[0] - mx) * nx + (q[1] - my) * ny);
+      if (fp <= 0) out.push(p);
+      if ((fp < 0 && fq > 0) || (fp > 0 && fq < 0)) {
+        const k = fp / (fp - fq);
+        out.push([p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k]);
+      }
     }
-    return box;
+    return out;
   }
-  function buildStrips(t) {
-    const w = leaf.offsetWidth || bookEl.offsetWidth / (spread ? 2 : 1);
-    const h = bookEl.offsetHeight;
-    const sw = w / STRIPS;
-    curlEl.textContent = '';
-    strips = [];
-    curlEl.dataset.sw = String(sw);
-    for (let k = 0; k < STRIPS; k++) {
-      const s = el('div', 'nb-strip');
-      s.style.cssText = `width:${sw + 0.8}px;left:0`;
-      const front = el('div', `nb-sface nb-sface-f${faceA.classList.contains('is-empty') ? ' is-empty' : ''}`);
-      const back = el('div', `nb-sface nb-sface-b${faceB.classList.contains('is-empty') ? ' is-empty' : ''}`);
-      front.append(sliceOf(faceA, k * sw, w, h));
-      back.append(sliceOf(faceB, w - (k + 1) * sw, w, h));
-      s.append(front, back);
-      s._f = front; s._b = back;
-      curlEl.append(s);
-      strips.push(s);
+  const polygon = (pts, flipW) => (pts.length < 3 ? 'polygon(0 0, 0 0, 0 0)'
+    : `polygon(${pts.map(([x, y]) => `${(flipW ? flipW - x : x).toFixed(1)}px ${y.toFixed(1)}px`).join(',')})`);
+  // a linear gradient along unit direction (dx, dy) in a w×h box, stops in px from point (rx, ry)
+  function gradient(dx, dy, rx, ry, w, h, stops) {
+    const L = Math.abs(w * dx) + Math.abs(h * dy);
+    const o = (rx - (w / 2 - (dx * L) / 2)) * dx + (ry - (h / 2 - (dy * L) / 2)) * dy;
+    return `linear-gradient(${Math.atan2(dx, -dy).toFixed(4)}rad, ${stops.map(([px, c]) => `${c} ${(o + px).toFixed(1)}px`).join(', ')})`;
+  }
+
+  function setP(t, px, py) {
+    const { w, h } = t;
+    const [x, y] = constrain(t, px, py);
+    t.P = [x, y];
+    const cy = t.top ? 0 : h;
+    const dx = w - x, dy = cy - y, len = Math.hypot(dx, dy);
+    if (len < 0.5) { // flat: nothing folded
+      faceA.style.clipPath = 'none';
+      faceB.style.visibility = 'hidden';
+      under.style.visibility = 'hidden';
+      return;
     }
-    leaf.append(curlEl);
-    leaf.classList.add('is-curling');
+    faceB.style.visibility = '';
+    under.style.visibility = '';
+    const nx = dx / len, ny = dy / len; // fold normal, pointing at the corner
+    const mx = (w + x) / 2, my = (cy + y) / 2; // a point on the fold
+    const rect = [[0, 0], [w, 0], [w, h], [0, h]];
+    const keep = clipHalf(rect, nx, ny, mx, my, 1);
+    const flap = clipHalf(rect, nx, ny, mx - nx * 0.6, my - ny * 0.6, -1); // overlaps the fold by a hair: no hairline gap
+    faceA.style.clipPath = polygon(keep);
+    // back = reflection across the fold ∘ mirror of the page (back-local u ↦ paper x = w − u)
+    const a = 1 - 2 * nx * nx, b = -2 * nx * ny, d = 1 - 2 * ny * ny, k = 2 * (mx * nx + my * ny);
+    faceB.style.transform = `matrix(${(-a).toFixed(5)},${(-b).toFixed(5)},${b.toFixed(5)},${d.toFixed(5)},${(a * w + k * nx).toFixed(2)},${(b * w + k * ny).toFixed(2)})`;
+    faceB.style.clipPath = polygon(flap, w);
+    under.style.clipPath = polygon(flap);
+
+    // light: strongest mid-turn, gone when the sheet is flat on either side
+    const depth = len / 2;
+    const [ex, ey] = rest(t, 1);
+    const s = Math.min(1, depth / 50, Math.hypot(x - ex, y - ey) / 70);
+    const cw = Math.min(depth, w * 0.45) + 8;
+    under.style.background = gradient(nx, ny, mx, my, w, h, [
+      [0, `rgba(0,0,0,${(0.42 * s).toFixed(3)})`], [cw * 0.35, `rgba(0,0,0,${(0.16 * s).toFixed(3)})`], [cw, 'rgba(0,0,0,0)']]);
+    shadeB.style.background = gradient(-nx, ny, w - mx, my, w, h, [
+      [0, `rgba(0,0,0,${(0.2 * s).toFixed(3)})`], [cw * 0.12, `rgba(255,255,255,${(0.2 * s).toFixed(3)})`],
+      [cw * 0.5, `rgba(255,255,255,${(0.05 * s).toFixed(3)})`], [cw * 1.4, `rgba(0,0,0,${(0.07 * s).toFixed(3)})`]]);
+    shadeA.style.background = gradient(-nx, -ny, mx, my, w, h, [
+      [0, `rgba(0,0,0,${(0.1 * s).toFixed(3)})`], [cw * 0.6, 'rgba(0,0,0,0)']]);
+    // the notepad sheet fades as it leaves over the left edge
+    leaf.style.opacity = t.spread ? '' : String(Math.max(0, Math.min(1, (x + w) / (w * 0.45))));
   }
-  function poseStrips(a, dir, z0 = 0) {
-    // dir -1: the free edge leads toward the left (turning forward); +1: toward the right
-    const bend = CURL * Math.sin(Math.PI * Math.min(1, Math.max(0, a)));
-    let total = 0;
-    const weights = strips.map((_, k) => (k === 0 ? 0 : (k / STRIPS) ** 1.6));
-    const sum = weights.reduce((x, y) => x + y, 0) || 1;
-    const root = -180 * a - dir * bend * 0.5;
-    const sw = Number(curlEl.dataset.sw) || 1;
-    let hx = 0, hz = z0; // hinge of the current strip, in the leaf's 3D space
-    strips.forEach((s, k) => {
-      const d = k === 0 ? root : dir * bend * (weights[k] / sum);
-      total += d;
-      s.style.transform = `translate3d(${hx.toFixed(2)}px,0,${hz.toFixed(2)}px) rotateY(${total.toFixed(2)}deg)`;
-      const rad = (total * Math.PI) / 180;
-      hx += sw * Math.cos(rad);
-      hz -= sw * Math.sin(rad);
-      // light falls off as a strip turns away from the viewer, on either face
-      const c = Math.cos((total * Math.PI) / 180);
-      s.style.setProperty('--sh', (1 - Math.abs(c)).toFixed(3));
-      // pick the visible face from the strip's own angle (WebKit ignores nested backface-visibility)
-      const front = c >= 0;
-      if (s._front !== front) { s._front = front; s._f.style.visibility = front ? '' : 'hidden'; s._b.style.visibility = front ? 'hidden' : ''; }
-    });
-  }
-  function pose(t, p) {
-    // p = 0 at the start of the turn, 1 at the end
-    const a = t.fwd ? p : 1 - p; // 0: leaf flat on the right (or on the pad); 1: turned over
-    // the sheet lifts off the book as it turns, flexes a little, and settles
-    const lift = Math.sin(Math.PI * Math.min(1, Math.max(0, a)));
-    const flex = (t.fwd ? 1 : -1) * lift * 7;
-    void flex;
-    poseStrips(t.spread ? a : a * 0.96, t.dir ?? (t.fwd ? -1 : 1), lift * lift * (t.spread ? 24 : 16));
-    leaf.style.setProperty('--a', a.toFixed(3));
-    leaf.style.setProperty('--lift', lift.toFixed(3));
-    bookEl.style.setProperty('--a', a.toFixed(3));
-    bookEl.style.setProperty('--lift', lift.toFixed(3));
-    if (!t.spread) leaf.style.opacity = a > 0.86 ? String(Math.max(0, (1 - a) / 0.14)) : '1';
-  }
+
   function finishTurn(t, done) {
-    leaf.classList.remove('is-curling');
-    curlEl.remove();
-    strips = [];
     leaf.hidden = true;
-    shade.hidden = true;
-    leaf.style.transform = '';
     leaf.style.opacity = '';
+    faceA.style.clipPath = '';
+    faceB.style.clipPath = '';
+    faceB.style.transform = '';
     if (done) idx = t.tv[0];
     busy = false;
     render();
     stage.classList.remove('is-turning');
     if (pending) { const a = pending; pending = null; a(); }
   }
-  function animate(t, p0, p1, then) {
-    // Motion spring: a quick lift, a soft landing and a tiny settle past flat
-    if (motion?.animate) {
-      let done = false;
-      const finish = () => { if (done) return; done = true; pose(t, p1); then(); };
-      try {
-        motion.animate(p0, p1, {
-          type: 'spring', stiffness: 30, damping: 11, mass: 1.2, restDelta: 0.002,
-          velocity: (p1 - p0) * 0.6,
-          onUpdate: (v) => pose(t, Math.max(-0.02, Math.min(1.02, v))),
-          onComplete: finish,
-        });
-        setTimeout(finish, TURN_MS * 2.4); // never leave a turn hanging
-        return;
-      } catch { /* fall through to the built-in ease */ }
-    }
-    const dur = TURN_MS * Math.max(0.25, Math.abs(p1 - p0));
+
+  // cubic-bezier easing (x1, y1, x2, y2), as in CSS
+  function bezier(x1, y1, x2, y2) {
+    const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+    const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+    return (u) => {
+      let s = u;
+      for (let i = 0; i < 6; i++) {
+        const fx = ((ax * s + bx) * s + cx) * s - u, dfx = (3 * ax * s + 2 * bx) * s + cx;
+        if (Math.abs(fx) < 1e-5 || !dfx) break;
+        s = Math.max(0, Math.min(1, s - fx / dfx));
+      }
+      return ((ay * s + by) * s + cy) * s;
+    };
+  }
+  const turnEase = bezier(0.42, 0.0, 0.22, 1); // a soft lift, a quick sweep, a gentle landing
+  const releaseEase = bezier(0.2, 0.7, 0.25, 1); // carries the hand's speed, then settles
+
+  let anim = 0;
+  // move the corner along path(k) for k in [0, 1]
+  function animate(t, path, dur, ease, then) {
+    cancelAnimationFrame(anim);
     const start = performance.now();
     const step = (now) => {
       const k = Math.min(1, (now - start) / dur);
-      pose(t, p0 + (p1 - p0) * ease(k));
-      if (k < 1) requestAnimationFrame(step); else then();
+      const [x, y] = path(ease(k));
+      setP(t, x, y);
+      if (k < 1) anim = requestAnimationFrame(step); else then();
     };
-    requestAnimationFrame(step);
+    anim = requestAnimationFrame(step);
+  }
+  // from wherever the corner is now to flat (done = false) or turned over (done = true)
+  function settle(t, done) {
+    const turned = t.fwd ? done : !done;
+    const [x0, y0] = t.P, [x1, y1] = rest(t, turned ? 1 : 0);
+    const dist = Math.hypot(x1 - x0, y1 - y0) / (2 * t.w);
+    const lift = t.h * 0.08 * Math.min(1, dist * 2) * (t.top ? 1 : -1);
+    animate(t, (k) => [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k + lift * Math.sin(Math.PI * k)],
+      260 + 520 * Math.min(1, dist), releaseEase, () => finishTurn(t, done));
   }
 
   function turnTo(target) {
@@ -411,12 +427,12 @@ export function initNotebook(section) {
     stage.classList.add('is-turning');
     refresh();
     const t = prepareTurn(idx, target);
-    pose(t, 0);
     playFlip();
-    animate(t, 0, 1, () => finishTurn(t, true));
+    animate(t, (k) => arc(t, t.fwd ? k : 1 - k), TURN_MS, turnEase, () => finishTurn(t, true));
   }
 
   function run(action) {
+    if (peek && !drag) dropPeek();
     if (busy || drag) { pending = action; return; }
     action();
   }
@@ -430,63 +446,92 @@ export function initNotebook(section) {
   }
 
   /* ---------- dragging and peeling ----------
-     With a mouse the leaf's free edge stays under the pointer: its angle comes from the pointer's
-     distance to the spine, so the page stops wherever the mouse stops. Hovering near an outer
-     edge lifts the corner a little (a peek); pressing there turns the peek into a drag.
-     Touch uses a horizontal swipe, so vertical scrolling keeps working. */
+     With a mouse the sheet's corner follows the pointer (eased a little each frame), so the page
+     folds wherever the hand goes and stops where it stops. Hovering near a page corner lifts it
+     (a peek); pressing there turns the peek into a drag. Touch uses a horizontal swipe, so
+     vertical scrolling keeps working. */
   let drag = null;
-  let peek = null; // { t, cur, goal, raf, leaving }
-  function geo(clientX) {
+  let peek = null; // { t, z, goal, raf, leaving }
+  // pointer → leaf coordinates (origin at the top of the spine)
+  function local(e) {
     const r = bookEl.getBoundingClientRect();
-    if (spread) {
-      const w = r.width / 2;
-      return { X: clientX - (r.left + w), w, r };
-    }
-    return { X: clientX - r.left, w: r.width, r };
-  }
-  // leaf state a (0 flat on the right, 1 turned over) that puts the free edge under the pointer
-  function aAt(clientX) {
-    const { X, w } = geo(clientX);
-    const u = spread ? X / w : 2 * X / w - 1;
-    return Math.acos(Math.max(-1, Math.min(1, u))) / Math.PI;
+    if (spread) return { x: e.clientX - (r.left + r.width / 2), y: e.clientY - r.top, w: r.width / 2, h: r.height };
+    // notepad: the sheet's width maps onto the corner's whole sweep, right edge to far left
+    return { x: 2 * (e.clientX - r.left) - r.width, y: e.clientY - r.top, w: r.width, h: r.height };
   }
   function zone(e) {
-    const { X, w, r } = geo(e.clientX);
-    if (e.clientY < r.top || e.clientY > r.bottom) return 0;
-    const edge = spread ? Math.abs(X) / w : Math.abs(2 * X / w - 1);
-    if (edge < 1 - EDGE || edge > 1.02) return 0;
-    return (spread ? X : X - w / 2) > 0 ? 1 : -1; // 1: next (right edge), -1: previous (left edge)
+    const { x, y, w, h } = local(e);
+    if (y < 0 || y > h) return 0;
+    const u = Math.abs(x) / w;
+    if (u < 1 - EDGE || u > 1.02) return 0;
+    return x > 0 ? 1 : -1; // 1: next (right edge), -1: previous (left edge)
   }
-  function startTurn(target, dir) {
+  const topHalf = (e) => { const { y, h } = local(e); return y < h / 2; };
+  function startTurn(target, dir, top = false) {
     busy = true;
     stage.classList.add('is-turning');
     refresh();
     const t = prepareTurn(idx, target);
     t.dir = dir;
+    if (top) { t.top = true; setP(t, ...rest(t, t.fwd ? 0 : 1)); }
     return t;
   }
+
   function peekLoop() {
     if (!peek) return;
-    peek.cur += (peek.goal - peek.cur) * 0.18;
-    pose(peek.t, peek.cur);
-    if (peek.leaving && peek.cur < 0.004) { const t = peek.t; peek = null; finishTurn(t, false); return; }
+    const [x, y] = peek.t.P, [gx, gy] = peek.goal;
+    const nx = x + (gx - x) * 0.2, ny = y + (gy - y) * 0.2;
+    setP(peek.t, nx, ny);
+    if (peek.leaving && Math.hypot(gx - nx, gy - ny) < 0.4) { const t = peek.t; peek = null; finishTurn(t, false); return; }
     peek.raf = requestAnimationFrame(peekLoop);
+  }
+  function leavePeek() {
+    if (!peek) return;
+    peek.leaving = true;
+    peek.goal = rest(peek.t, peek.z > 0 ? 0 : 1);
+  }
+  function dropPeek() {
+    if (!peek) return;
+    cancelAnimationFrame(peek.raf);
+    const t = peek.t;
+    peek = null;
+    finishTurn(t, false);
   }
   function peekAt(e) {
     if (mode !== 'book' || drag || reduce.matches || e.pointerType !== 'mouse') return;
     const z = zone(e);
+    const top = z ? topHalf(e) : false;
+    if (peek && (!z || peek.z !== z || peek.t.top !== top)) { leavePeek(); return; }
     const target = z > 0 ? nextTarget() : z < 0 ? prevTarget() : null;
-    if (peek && (!z || (peek.z !== z))) { peek.leaving = true; peek.goal = 0; return; }
     if (!z || target == null) return;
     if (!peek) {
       if (busy) return;
-      peek = { t: startTurn(target, z > 0 ? -1 : 1), z, cur: 0, goal: 0, leaving: false };
+      peek = { t: startTurn(target, z > 0 ? -1 : 1, top), z, goal: null, leaving: false };
       peek.raf = requestAnimationFrame(peekLoop);
     }
     peek.leaving = false;
-    const a = aAt(e.clientX);
-    const p = peek.t.fwd ? a : 1 - a;
-    peek.goal = Math.min(0.085, Math.max(0.015, p));
+    // the corner lifts toward the pointer, by a small amount
+    const t = peek.t;
+    const [cx, cy] = rest(t, z > 0 ? 0 : 1);
+    const { x, y } = local(e);
+    let vx = (x - cx) * 0.45, vy = (y - cy) * 0.45;
+    vx = z > 0 ? Math.min(vx, -54) : Math.max(vx, 54);
+    vy = top ? Math.max(vy, 36) : Math.min(vy, -36);
+    const m = Math.min(1, (t.w * 0.16) / Math.hypot(vx, vy));
+    peek.goal = [cx + vx * m, cy + vy * m];
+  }
+
+  function follow() {
+    if (!drag?.started) return;
+    const [x, y] = drag.t.P, [gx, gy] = drag.goal;
+    setP(drag.t, x + (gx - x) * 0.32, y + (gy - y) * 0.32);
+    drag.raf = requestAnimationFrame(follow);
+  }
+  function beginDrag(e, t, extra) {
+    drag = { id: e.pointerId, started: true, t, x0: e.clientX, y0: e.clientY, goal: t.P.slice(), ...extra };
+    drag.raf = requestAnimationFrame(follow);
+    playFlip();
+    try { bookEl.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
   }
 
   function onDown(e) {
@@ -496,39 +541,34 @@ export function initNotebook(section) {
       const z = zone(e);
       if (!z) return;
       e.preventDefault();
-      if (peek) {
+      if (peek && peek.z === z && peek.t.top === topHalf(e)) {
         cancelAnimationFrame(peek.raf);
         const t = peek.t;
-        drag = { id: e.pointerId, mouse: true, started: true, t, p: peek.cur, x0: e.clientX, y0: e.clientY };
         peek = null;
-        playFlip();
-        try { bookEl.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+        beginDrag(e, t, { mouse: true });
+        onMove(e);
         return;
       }
+      dropPeek();
       if (busy) return;
       const target = z > 0 ? nextTarget() : prevTarget();
       if (target == null || reduce.matches) return;
-      const t = startTurn(target, z > 0 ? -1 : 1);
-      drag = { id: e.pointerId, mouse: true, started: true, t, p: 0, x0: e.clientX, y0: e.clientY };
-      playFlip();
-      try { bookEl.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+      beginDrag(e, startTurn(target, z > 0 ? -1 : 1, topHalf(e)), { mouse: true });
       onMove(e);
       return;
     }
     if (busy) return;
     const r = bookEl.getBoundingClientRect();
-    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, w: spread ? r.width / 2 : r.width, started: false, t: null, p: 0, type: e.pointerType };
+    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, w: spread ? r.width / 2 : r.width, started: false, t: null };
   }
   function onMove(e) {
     if (!drag) { peekAt(e); return; }
     if (e.pointerId !== drag.id) return;
     if (drag.mouse) {
-      const a = aAt(e.clientX);
-      drag.p = Math.max(0, Math.min(1, drag.t.fwd ? a : 1 - a));
-      drag.lastX = e.clientX;
-      drag.lastT = performance.now();
+      const { x, y } = local(e);
+      drag.goal = [x, y];
       drag.vx = e.movementX || 0;
-      pose(drag.t, drag.p);
+      drag.lastT = performance.now();
       return;
     }
     const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
@@ -542,38 +582,39 @@ export function initNotebook(section) {
       if (target == null || reduce.matches) {
         if (reduce.matches && target != null) drag.reduced = target; else { drag = null; return; }
       } else {
-        drag.started = true;
-        drag.t = startTurn(target, dx < 0 ? -1 : 1);
-        playFlip();
-        try { bookEl.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+        const { w, x0, y0 } = drag;
+        beginDrag(e, startTurn(target, dx < 0 ? -1 : 1), { w, x0, y0 });
       }
     }
     if (drag?.started) {
-      drag.p = Math.max(0, Math.min(1, Math.abs(dx) / (drag.w * (spread ? 2 : 1.2))));
+      const p = Math.max(0, Math.min(1, Math.abs(dx) / (drag.w * (spread ? 2 : 1.2))));
+      drag.goal = arc(drag.t, drag.t.fwd ? p : 1 - p);
       drag.lastX = e.clientX;
       drag.lastT = performance.now();
-      pose(drag.t, drag.p);
     }
   }
   function onUp(e) {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag;
     drag = null;
+    cancelAnimationFrame(d.raf);
     if (d.reduced != null && Math.abs(e.clientX - d.x0) > 50) { idx = spreadOf(d.reduced)[0]; render(); return; }
     if (!d.started) { if (pending) { const a = pending; pending = null; a(); } return; }
+    const a = aOf(d.t, d.goal[0]);
+    const p = d.t.fwd ? a : 1 - a;
     const moving = d.lastT && performance.now() - d.lastT < 80;
-    const flickToward = moving && Math.abs(e.clientX - (d.lastX ?? e.clientX)) >= 0 && Math.abs(d.vx || 0) > 6
-      && ((d.t.dir < 0 && d.vx < 0) || (d.t.dir > 0 && d.vx > 0));
-    const complete = d.p > 0.5 || flickToward || (!d.mouse && (d.p > 0.33 || (moving && Math.abs(e.clientX - d.x0) > 40)));
-    animate(d.t, d.p, complete ? 1 : 0, () => finishTurn(d.t, complete));
+    const flickToward = moving && Math.abs(d.vx || 0) > 6 && ((d.t.dir < 0 && d.vx < 0) || (d.t.dir > 0 && d.vx > 0));
+    const complete = p > 0.5 || flickToward || (!d.mouse && (p > 0.33 || (moving && Math.abs(e.clientX - d.x0) > 40)));
+    settle(d.t, complete);
   }
   function onCancel(e) {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag;
     drag = null;
-    if (d.started) animate(d.t, d.p, 0, () => finishTurn(d.t, false));
+    cancelAnimationFrame(d.raf);
+    if (d.started) settle(d.t, false);
   }
-  bookEl.addEventListener('pointerleave', (e) => { if (peek && !drag) peekAt({ ...e, clientX: -1e6, clientY: -1e6, pointerType: 'mouse' }); });
+  bookEl.addEventListener('pointerleave', () => { if (!drag) leavePeek(); });
   bookEl.addEventListener('pointerdown', onDown);
   // a native image/text drag would cancel the pointer stream (Firefox does this)
   bookEl.addEventListener('dragstart', (e) => { if (drag) e.preventDefault(); });
@@ -606,7 +647,6 @@ export function initNotebook(section) {
     bookEl.append(slotL, slotR);
     pages.forEach((p) => { p.hidden = true; slotR.append(p); });
     leaf.hidden = true;
-    shade.hidden = true;
     measure();
     render();
     shell.dataset.engine = reduce.matches ? 'instant' : 'leaf';
@@ -614,6 +654,9 @@ export function initNotebook(section) {
   }
 
   function toReading({ focus = false } = {}) {
+    cancelAnimationFrame(anim);
+    if (peek) { cancelAnimationFrame(peek.raf); peek = null; }
+    if (drag) cancelAnimationFrame(drag.raf);
     pending = null;
     busy = false;
     drag = null;
