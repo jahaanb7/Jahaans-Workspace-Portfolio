@@ -1310,3 +1310,10 @@ a { color: inherit; }
 .motion-ok .anatomy .an-dim { stroke-dasharray: none; stroke-dashoffset: 0; }
 .opening h1.is-annotated { margin-top: 0.45em; margin-bottom: 0.75em; }
 @media (max-width: 760px) { .opening h1.is-annotated { margin-top: 0; margin-bottom: 0.3em; } }
+
+/* Lenis smooth scroll + split headings (js/motion.js) */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+.display-title .bw { display: inline-block; will-change: transform, opacity; }

@@ -43,11 +43,58 @@ export async function initMotion() {
     await script('gsap-3.12.5.min.js');
     await script('ScrollTrigger-3.12.5.min.js');
   }
+  if (!window.Lenis) await script('lenis-1.1.20.min.js').catch(() => {});
   const { gsap, ScrollTrigger } = window;
   gsap.registerPlugin(ScrollTrigger);
   gsap.defaults({ ease: MOTION.ease, duration: MOTION.reveal });
 
   const mm = gsap.matchMedia();
+
+  /* Lenis smooth scroll (darkroomengineering/lenis), driven by GSAP's ticker so
+     ScrollTrigger reads the same scroll position every frame. */
+  mm.add(MOTION.query, () => {
+    if (!window.Lenis) return;
+    const lenis = new window.Lenis({ lerp: 0.1, anchors: { offset: -64 }, prevent: (n) => n.closest?.('.nav, .sheet-scroll, [data-lenis-prevent]') });
+    lenis.on('scroll', ScrollTrigger.update);
+    const tick = (t) => lenis.raf(t * 1000);
+    gsap.ticker.add(tick);
+    gsap.ticker.lagSmoothing(0);
+    return () => { gsap.ticker.remove(tick); lenis.destroy(); };
+  });
+
+  /* Section titles blur in word by word (react-bits BlurText, rebuilt on GSAP). */
+  mm.add(MOTION.query, () => {
+    const tweens = [];
+    document.querySelectorAll('.display-title').forEach((h) => {
+      const words = splitWords(h);
+      tweens.push(gsap.from(words, {
+        opacity: 0, y: 18, filter: 'blur(10px)', duration: 0.7, stagger: 0.06, ease: 'power3.out',
+        scrollTrigger: { trigger: h, start: 'top 85%', once: true },
+        onComplete: () => gsap.set(words, { clearProps: 'filter,transform' }),
+      }));
+    });
+    return () => document.querySelectorAll('.display-title[data-split]').forEach(unsplit);
+  });
+
+  /* Primary buttons lean toward the pointer (react-bits Magnet). */
+  mm.add(`${MOTION.desktop} and (pointer: fine)`, () => {
+    const off = [];
+    document.querySelectorAll('.btn-ink, .nav-cta').forEach((b) => {
+      const x = gsap.quickTo(b, 'x', { duration: 0.4, ease: 'power3.out' });
+      const y = gsap.quickTo(b, 'y', { duration: 0.4, ease: 'power3.out' });
+      const move = (e) => {
+        const r = b.getBoundingClientRect();
+        x((e.clientX - (r.left + r.width / 2)) * 0.3);
+        y((e.clientY - (r.top + r.height / 2)) * 0.3);
+      };
+      const leave = () => { x(0); y(0); };
+      b.addEventListener('pointermove', move);
+      b.addEventListener('pointerleave', leave);
+      off.push(() => { b.removeEventListener('pointermove', move); b.removeEventListener('pointerleave', leave); gsap.set(b, { clearProps: 'transform' }); });
+    });
+    return () => off.forEach((f) => f());
+  });
+
   mm.add(MOTION.desktop, () => {
     /* fluid frames follow the plate through the viewport */
     const seq = document.querySelector('[data-sequence]');
@@ -68,7 +115,7 @@ export async function initMotion() {
       gsap.fromTo(n, { y: d }, { y: -d, ease: 'none', scrollTrigger: { trigger: n, start: 'top bottom', end: 'bottom top', scrub: true } });
     });
 
-    /* a few entries (never headings or body text) */
+    /* a few entries (body text stays put) */
     gsap.utils.toArray('.clip, .small-fig').forEach((n) => {
       gsap.from(n, { opacity: 0, y: 24, duration: MOTION.reveal, scrollTrigger: { trigger: n, start: 'top 90%', once: true } });
     });
@@ -90,3 +137,27 @@ export async function initMotion() {
   }).observe(document.body);
   document.fonts?.ready.then(() => ScrollTrigger.refresh());
 }
+
+// Wrap each word of a heading in an inline-block span, keeping child elements like <em>.
+function splitWords(el) {
+  if (!el.dataset.split) {
+    el.dataset.split = el.innerHTML;
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walk.nextNode()) nodes.push(walk.currentNode);
+    nodes.forEach((t) => {
+      const frag = document.createDocumentFragment();
+      t.textContent.split(/(\s+)/).forEach((part) => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { frag.append(part); return; }
+        const s = document.createElement('span');
+        s.className = 'bw';
+        s.textContent = part;
+        frag.append(s);
+      });
+      t.replaceWith(frag);
+    });
+  }
+  return el.querySelectorAll('.bw');
+}
+function unsplit(el) { el.innerHTML = el.dataset.split; delete el.dataset.split; }

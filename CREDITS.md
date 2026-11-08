@@ -33,6 +33,8 @@ Downloaded once, resized and converted to WebP. `Galileo_moon_phases.jpg` (Commo
 | Rough.js 4.6.6 (Preet Shihn) | MIT | `tools/vendor/` (build time only) |
 | Rough Notation 0.5.1 (Preet Shihn) | MIT | `assets/vendor/` |
 | GSAP 3.12.5 and ScrollTrigger | GreenSock standard licence | `assets/vendor/` |
+| Lenis 1.1.20 | MIT (darkroom.engineering), `assets/vendor/lenis-LICENSE.txt` | `assets/vendor/` |
+| BlurText and Magnet effects | Adapted from react-bits (MIT, David Haz), rebuilt in vanilla JS on GSAP | `js/motion.js` |
 | Bricolage Grotesque | SIL OFL 1.1 | `assets/fonts/` (`OFL-bricolage.txt`) |
 | Newsreader (text cut, plus display roman and italic instanced at opsz 60 from [google/fonts](https://github.com/google/fonts/tree/main/ofl/newsreader)) | SIL OFL 1.1 (`OFL-newsreader.txt`) | `assets/fonts/` |
 | Caveat | SIL OFL 1.1 | `assets/fonts/` (`OFL-caveat.txt`) |
