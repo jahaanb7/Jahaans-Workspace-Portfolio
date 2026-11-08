@@ -13,7 +13,8 @@
     var setOpen = function (open) {
       toggle.setAttribute('aria-expanded', String(open));
       nav.dataset.open = String(open);
-      toggle.textContent = open ? 'Close' : 'Menu';
+      toggle.innerHTML = '<span class="mt-icon" aria-hidden="true"><i></i><i></i></span><span class="mt-label">' + (open ? 'Close' : 'Menu') + '</span>';
+      document.documentElement.classList.toggle('menu-open', open);
     };
     setOpen(false);
     toggle.addEventListener('click', function () {
@@ -22,6 +23,10 @@
     nav.addEventListener('click', function (e) {
       if (e.target.closest('a') && mq.matches) setOpen(false);
     });
+    document.addEventListener('click', function (e) {
+      if (toggle.getAttribute('aria-expanded') === 'true' && !nav.contains(e.target) && !toggle.contains(e.target)) setOpen(false);
+    });
+    mq.addEventListener && mq.addEventListener('change', function (e) { if (!e.matches) setOpen(false); });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
         setOpen(false);
@@ -29,6 +34,15 @@
       }
     });
   }
+
+  // Email: assembled here so the address never sits in the HTML for scrapers.
+  Array.prototype.forEach.call(document.querySelectorAll('[data-mail]'), function (a) {
+    var addr = a.getAttribute('data-u') + '@' + a.getAttribute('data-d');
+    a.href = 'mailto:' + addr;
+    
+    var t = a.querySelector('[data-mail-text]');
+    if (t) t.textContent = addr;
+  });
 
   // Show the compact brand in the sticky bar once the masthead has scrolled away.
   var bar = document.querySelector('[data-navbar]');

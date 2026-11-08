@@ -96,17 +96,26 @@ async function start(root) {
     labelsEl.style.visibility = show < 0.02 ? 'hidden' : 'visible';
     // labels sit to the right of the axis, on the perpendicular; the leader points back to the part
     const nx = Math.cos(S.tilt), ny = -Math.sin(S.tilt);
-    const ang = Math.atan2(ny, nx);
-    anchors.forEach((a, i) => {
+    // keep every label inside the stage and off its neighbours (narrow phones clip otherwise)
+    const W = labelsEl.clientWidth || innerWidth, H = labelsEl.clientHeight || innerHeight;
+    const gap = W < 600 ? 15 : 17;
+    const pos = anchors.map((a, i) => {
       const el = labelEls[i];
-      if (!el) return;
+      if (!el) return null;
       const off = a.r + 22 + (i % 2) * 14; // buffer px
-      const x = (a.x + nx * off) * px, y = (a.y + ny * off) * px;
-      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-      el.style.setProperty('--len', `${((off - a.r - 4) * px).toFixed(1)}px`);
-      el.style.setProperty('--ang', `${ang.toFixed(3)}rad`);
-      el.classList.toggle('is-hot', S.hover === i);
-    });
+      const w = el.offsetWidth || 120;
+      const x = Math.max(6, Math.min(W - w - 6, (a.x + nx * off) * px));
+      return { i, el, x, y: (a.y + ny * off) * px, ax: (a.x + nx * (a.r + 4)) * px, ay: (a.y + ny * (a.r + 4)) * px };
+    }).filter(Boolean).sort((p, q) => p.y - q.y);
+    for (let k = 1; k < pos.length; k++) if (pos[k].y - pos[k - 1].y < gap) pos[k].y = pos[k - 1].y + gap;
+    for (const p of pos) p.y = Math.min(p.y, H - 8);
+    for (const p of pos) {
+      const vx = p.ax - p.x, vy = p.ay - p.y;
+      p.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
+      p.el.style.setProperty('--len', `${Math.max(0, Math.hypot(vx, vy) - 2).toFixed(1)}px`);
+      p.el.style.setProperty('--ang', `${(Math.atan2(vy, vx) - Math.PI).toFixed(3)}rad`);
+      p.el.classList.toggle('is-hot', S.hover === p.i);
+    }
   }
 
   /* ---------- render ---------- */

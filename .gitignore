@@ -3,3 +3,7 @@
 .agents/
 skills-lock.json
 node_modules/
+.env*
+.vercel/
+__pycache__/
+*.pyc

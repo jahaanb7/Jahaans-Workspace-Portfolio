@@ -28,10 +28,11 @@ export function initBackdrop() {
   document.body.prepend(c);
   const ctx = c.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const coarse = matchMedia('(pointer: coarse)');
   let w = 0, h = 0, dpr = 1, cols = 0, rows = 0, field = new Float32Array(0);
   let raf = 0, last = 0, ink = '#fff', accent = '#9cf', mono = 'monospace';
   let mode = { n1: 1, m1: 2, n2: 2, m2: 3, f: 0 };
-  const TRACERS = 70, TRAIL = 16;
+  const TRACERS = innerWidth < 760 ? 30 : 70, TRAIL = 16;
   const tr = Array.from({ length: TRACERS }, () => ({ x: 0, y: 0, life: 0, pts: [] }));
   const ptr = { x: -1e4, y: -1e4, s: 0, tx: -1e4, ty: -1e4, on: false };
 
@@ -187,7 +188,8 @@ export function initBackdrop() {
 
     // probe: follows the pointer, otherwise rides the first live tracer
     let px = ptr.tx, py = ptr.ty;
-    if (!ptr.on) { const p = tr.find((q) => q.pts.length > 6 && q.x > 120 && q.x < w - 260 && q.y > 120 && q.y < h - 80); if (p) { px = p.x; py = p.y; } else px = -1; }
+    if (!ptr.on && (w < 900 || coarse.matches)) px = -1; // phones and tablets: no wandering readout
+    else if (!ptr.on) { const p = tr.find((q) => q.pts.length > 6 && q.x > 120 && q.x < w - 260 && q.y > 120 && q.y < h - 80); if (p) { px = p.x; py = p.y; } else px = -1; }
     if (px > 0) {
       const { u } = sample(px, py);
       ctx.globalAlpha = 0.55; ctx.strokeStyle = accent; ctx.beginPath();

@@ -2,6 +2,8 @@
 <html lang="en" class="no-js">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-3yDX8+0LEF9VgsZMN6tnFxy/LdyAOaZ01ncMP3GnIso=' 'sha256-kRmZLQAL5jQQ73kyvqi6AjijbpYFeBlG/1bGhW90yRk=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Jahaan’s Workspace</title>
   <meta name="description" content="Jahaan Bhavsar's scratchbook: a software rasterizer, a quantum simulation lab, an SPH fluid simulation, and hardware designs for a rocket, a Chladni plate and a radio telescope.">
@@ -10,7 +12,10 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="Jahaan’s Workspace">
   <meta property="og:description" content="A maker driven by endless questions about how things work.">
-  <!-- og:image, og:url, canonical and sitemap are added once the deployment URL is known. -->
+  <meta property="og:url" content="https://jahaanb7.github.io/Jahaans-Workspace-Portfolio/">
+  <meta property="og:image" content="https://jahaanb7.github.io/Jahaans-Workspace-Portfolio/assets/images/hero-orion.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://jahaanb7.github.io/Jahaans-Workspace-Portfolio/">
   <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/bricolage-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/newsreader-latin-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -33,6 +38,7 @@
           <li><a href="#workbench">Workbench</a></li>
           <li><a href="#notebook">Scratchbook</a></li>
           <li><a href="#writing">Writing</a></li>
+          <li><a href="#contact">Contact</a></li>
           <li><a class="nav-cta" href="https://github.com/jahaanb7">GitHub <span aria-hidden="true">↗</span></a></li>
         </ul>
       </nav>
@@ -813,6 +819,16 @@ setRule(scope: Scope, decision: Decision): void {
   </main>
 
   <footer class="site-footer">
+    <section class="wrap contact" id="contact" aria-labelledby="contact-title">
+      <p class="eyebrow"><span class="sec-no">05</span> Contact</p>
+      <h2 class="display-title" id="contact-title">Building something? <em>Let’s talk.</em></h2>
+      <p class="contact-lede">Internships, research, robotics, or a question about one of these projects. I read everything.</p>
+      <ul class="contact-links">
+        <li><a class="contact-link" data-mail data-u="jahaan.bhavsar77" data-d="gmail.com" href="#contact"><span class="mono">Email</span><span class="contact-val" data-mail-text>jahaan.bhavsar77 [at] gmail [dot] com</span></a></li>
+        <li><a class="contact-link" href="https://www.linkedin.com/in/jahaan-bhavsar-962042446/" rel="noopener noreferrer"><span class="mono">LinkedIn</span><span class="contact-val">in/jahaan-bhavsar <span aria-hidden="true">↗</span></span></a></li>
+        <li><a class="contact-link" href="https://github.com/jahaanb7" rel="noopener noreferrer"><span class="mono">GitHub</span><span class="contact-val">@jahaanb7 <span aria-hidden="true">↗</span></span></a></li>
+      </ul>
+    </section>
     <div class="wrap footer-row">
       <p>© <span data-year>2026</span> Jahaan Bhavsar</p>
       <p>Galileo (1610) image: public domain, Wikimedia Commons. Fonts: OFL. Rough.js, Rough Notation: MIT. <a href="CREDITS.md">Credits</a></p>
