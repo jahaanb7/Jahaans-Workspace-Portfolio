@@ -103,19 +103,12 @@ If you change the hero mesh or pose, run `node tools/render-hero-frame.mjs` to r
 
 ## Deploy
 
-### GitHub Pages
+The live site is **https://jahaanbhavsar.vercel.app**, hosted on Vercel's free Hobby plan (project `jahaan-portfolio-preview`). There is no build step; Vercel serves the folder as-is, minus what `.vercelignore` lists.
 
-1. Push this folder to a repository, for example `jahaanb7.github.io` (served at the root) or `portfolio` (served at `/portfolio/`).
-2. In the repository settings, open Pages, choose "Deploy from a branch", then `main` and `/ (root)`.
-3. All paths are relative, so the site works at the root and in a subfolder.
-
-### Any static host (for example Hostinger)
-
-Upload every file except `tools/`, `BUILD-PLAN.md`, `DESIGN.md`, `DESIGN_BRIEF.md`, `DESIGN_DIRECTION.md`, `.agents/`, `.claude/` and `skills-lock.json`. No build step is needed.
-
-### After the URL is known
-
-Add `<link rel="canonical">`, `og:url` and an absolute `og:image` to each page, and a `sitemap.xml`. These are left out until then on purpose.
+- Deploy by hand: `vercel --prod` from this folder.
+- With the GitHub repo connected in Vercel, every push to `main` deploys to production and other branches get preview URLs.
+- The old GitHub Pages address serves only a redirect, from the `gh-pages` branch. Leave `main` out of Pages.
+- If the domain ever changes, update `og:url`, `og:image` and `canonical` in `index.html` and `projects/*.html`, plus `sitemap.xml` and `robots.txt`.
 
 ## Credits
 

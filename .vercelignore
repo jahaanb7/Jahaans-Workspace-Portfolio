@@ -1,0 +1,11 @@
+.agents
+.claude
+.env*
+review
+tools
+skills-lock.json
+BUILD-PLAN.md
+DESIGN.md
+DESIGN_BRIEF.md
+DESIGN_DIRECTION.md
+DEVELOPING.md

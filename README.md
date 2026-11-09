@@ -1,6 +1,6 @@
 # Jahaan's Workspace Portfolio
 
-**Live site:** https://jahaanb7.github.io/Jahaans-Workspace-Portfolio/
+**Live site:** https://jahaanbhavsar.vercel.app/
 
 I'm Jahaan Bhavsar, a student engineer who builds things to find out how they work. My software side is renderers and simulations written from the equations up: Rasterix (a software rasterizer in Java), QuantumSim, an SPH fluid simulation and a particle gravity sim. My hardware side is Orion, a model rocket with a gimballed motor and my own flight computer; a Chladni plate for seeing standing waves; and ATLAS, a one-metre radio dish meant to detect the 21 cm hydrogen line. I also work on Myelovar, which looks at non-coding variants in multiple myeloma.
 
